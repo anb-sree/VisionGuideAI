@@ -73,3 +73,11 @@ yarn-error.log
 !.yarn/releases
 !.yarn/sdks
 !.yarn/versions
+
+# Environment files (optional, sensitive info)
+.env
+.env.*
+
+# VS Code
+*.log
+.vscode/

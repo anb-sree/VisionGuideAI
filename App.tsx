@@ -6,7 +6,9 @@
  */
 
 import { NewAppScreen } from '@react-native/new-app-screen';
-import { StatusBar, StyleSheet, useColorScheme, View } from 'react-native';
+import { StatusBar, StyleSheet, useColorScheme, View, Text } from 'react-native';
+import firestore from '@react-native-firebase/firestore';
+
 import {
   SafeAreaProvider,
   useSafeAreaInsets,
@@ -23,22 +25,46 @@ function App() {
   );
 }
 
-function AppContent() {
-  const safeAreaInsets = useSafeAreaInsets();
+// function AppContent() {
+//   const safeAreaInsets = useSafeAreaInsets();
 
+//   return (
+//     <View style={styles.container}>
+//       <NewAppScreen
+//         templateFileName="App.tsx"
+//         safeAreaInsets={safeAreaInsets}
+//       />
+//     </View>
+//   );
+// }
+
+
+function AppContent() {
+  firestore();
   return (
     <View style={styles.container}>
-      <NewAppScreen
-        templateFileName="App.tsx"
-        safeAreaInsets={safeAreaInsets}
-      />
+      <Text style={styles.text}>
+        VisionGuideAI is running 🚀
+      </Text>
     </View>
   );
 }
 
+
+// const styles = StyleSheet.create({
+//   container: {
+//     flex: 1,
+//   },
+// });
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    justifyContent: 'center',
+  },
+  text: {
+    fontSize: 22,
+    textAlign: 'center',
   },
 });
 
