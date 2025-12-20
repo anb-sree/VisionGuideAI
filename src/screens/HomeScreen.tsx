@@ -1,25 +1,29 @@
-// src/screens/HomeScreen.tsx
-
 import React, { useState } from 'react';
-import { View, Text, TextInput, Pressable } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { View, Text, TextInput, Pressable, StyleSheet } from 'react-native';
+import { useNavigation, NavigationProp } from '@react-navigation/native';
 
-const HomeScreen = () => {
-  const navigation = useNavigation();
+type RootStackParamList = {
+  Home: undefined;
+  Guidance: { destination: string };
+  Settings: undefined;
+};
+
+const HomeScreen: React.FC = () => {
+  const navigation = useNavigation<NavigationProp<RootStackParamList, 'Home'>>();
   const [destination, setDestination] = useState('');
 
   return (
-    <View className="flex-1 bg-black px-6 justify-center">
-      
+    <View style={styles.container}>
       {/* App Title */}
-      <Text className="text-white text-3xl font-bold text-center mb-8">
+      <Text style={styles.title}>
         VisionGuide AI
       </Text>
 
       {/* Destination Input */}
       <TextInput
-        className="bg-white rounded-xl px-4 py-4 text-lg mb-6"
+        style={styles.input}
         placeholder="Enter destination"
+        placeholderTextColor="#999"
         value={destination}
         onChangeText={setDestination}
         accessibilityLabel="Destination input"
@@ -27,40 +31,98 @@ const HomeScreen = () => {
 
       {/* Start Guidance */}
       <Pressable
-        className="bg-green-600 py-5 rounded-xl mb-4"
+        style={styles.startButton}
         onPress={() =>
-          navigation.navigate('Map', { destination })
+          navigation.navigate('Guidance', { destination })
         }
         accessibilityLabel="Start guidance"
       >
-        <Text className="text-white text-xl text-center font-semibold">
+        <Text style={styles.startButtonText}>
           Start Guidance
         </Text>
       </Pressable>
 
       {/* End Guidance */}
       <Pressable
-        className="bg-red-600 py-5 rounded-xl mb-4"
+        style={styles.endButton}
         accessibilityLabel="End guidance"
       >
-        <Text className="text-white text-xl text-center font-semibold">
+        <Text style={styles.endButtonText}>
           End Guidance
         </Text>
       </Pressable>
 
       {/* Settings */}
       <Pressable
-        className="bg-gray-700 py-4 rounded-xl"
+        style={styles.settingsButton}
         onPress={() => navigation.navigate('Settings')}
         accessibilityLabel="Open settings"
       >
-        <Text className="text-white text-lg text-center">
+        <Text style={styles.settingsButtonText}>
           Settings
         </Text>
       </Pressable>
-
     </View>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#000',
+    paddingHorizontal: 24,
+    justifyContent: 'center',
+  },
+  title: {
+    color: '#fff',
+    fontSize: 32,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 32,
+  },
+  input: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    fontSize: 18,
+    marginBottom: 24,
+    color: '#000',
+  },
+  startButton: {
+    backgroundColor: '#16a34a',
+    paddingVertical: 20,
+    borderRadius: 12,
+    marginBottom: 16,
+  },
+  startButtonText: {
+    color: '#fff',
+    fontSize: 20,
+    textAlign: 'center',
+    fontWeight: '600',
+  },
+  endButton: {
+    backgroundColor: '#dc2626',
+    paddingVertical: 20,
+    borderRadius: 12,
+    marginBottom: 16,
+  },
+  endButtonText: {
+    color: '#fff',
+    fontSize: 20,
+    textAlign: 'center',
+    fontWeight: '600',
+  },
+  settingsButton: {
+    backgroundColor: '#374151',
+    paddingVertical: 16,
+    borderRadius: 12,
+  },
+  settingsButtonText: {
+    color: '#fff',
+    fontSize: 18,
+    textAlign: 'center',
+  },
+});
 
 export default HomeScreen;
