@@ -18,7 +18,7 @@ VisionGuideAI is a mobile application built with React Native designed to assist
 1. **Clone the repository**
 
 ```bash
-git clone https://github.com/your-username/VisionGuideAI.git
+git clone https://github.com/anb-sree/VisionGuideAI.git
 cd VisionGuideAI
 
 ```
