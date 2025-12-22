@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect} from 'react';
 import { View, Text, TextInput, Pressable, StyleSheet } from 'react-native';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
+import { startListening, stopListening } from '../services/voiceService';
 
 type RootStackParamList = {
   Home: undefined;
@@ -11,6 +12,37 @@ type RootStackParamList = {
 const HomeScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp<RootStackParamList, 'Home'>>();
   const [destination, setDestination] = useState('');
+
+  const startGuidance = () => {
+    if (!destination) return;
+    navigation.navigate('Guidance', { destination });
+  };
+
+  const endGuidance = () => {
+    stopListening();
+    console.log('Guidance ended');
+  };
+
+  const handleVoiceCommand = (text) => {
+    console.log('Voice command:', text);
+
+    if (text.includes('start')) {
+      startGuidance();
+    } else if (text.includes('end') || text.includes('stop')) {
+      endGuidance();
+    }
+  };
+
+  useEffect(() => {
+    startListening(handleVoiceCommand);
+
+    return () => {
+      stopListening();
+    };
+  }, []);
+
+
+
 
   return (
     <View style={styles.container}>
@@ -32,9 +64,7 @@ const HomeScreen: React.FC = () => {
       {/* Start Guidance */}
       <Pressable
         style={styles.startButton}
-        onPress={() =>
-          navigation.navigate('Guidance', { destination })
-        }
+        onPress={startGuidance}
         accessibilityLabel="Start guidance"
       >
         <Text style={styles.startButtonText}>
@@ -45,6 +75,7 @@ const HomeScreen: React.FC = () => {
       {/* End Guidance */}
       <Pressable
         style={styles.endButton}
+        onPress={endGuidance}
         accessibilityLabel="End guidance"
       >
         <Text style={styles.endButtonText}>
