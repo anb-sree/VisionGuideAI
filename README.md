@@ -31,8 +31,17 @@ npm install
 Android:
 ```bash
 npx react-native run-android
+
 ```
+
+
 ios:
 ```bash
 npx react-native run-ios
 ``` 
+
+### **Some changes to be done after initial setup"
+After running npm install
+Replace the function jcenter() with mavenCentral() in the following files in case of CMake error during build:
+node_modules/react-native-tts/android/build.gradle
+and node_modules/@react-native-voice/voice/android/build.gradle
