@@ -2,6 +2,8 @@ import React, { useState, useEffect} from 'react';
 import { View, Text, TextInput, Pressable, StyleSheet } from 'react-native';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { startListening, stopListening } from '../services/voiceService';
+import { speak } from '../services/ttsService';
+import { vibrateObstacle } from '../services/hapticsService';
 
 type RootStackParamList = {
   Home: undefined;
@@ -15,29 +17,45 @@ const HomeScreen: React.FC = () => {
 
   const startGuidance = () => {
     if (!destination) return;
+
+    speak('Guidance started');
     navigation.navigate('Guidance', { destination });
   };
 
   const endGuidance = () => {
+    speak('Guidance ended');
     stopListening();
-    console.log('Guidance ended');
+
   };
 
-  const handleVoiceCommand = (text) => {
+  const handleVoiceCommand = (text: string) => {
     console.log('Voice command:', text);
 
     if (text.includes('start')) {
       startGuidance();
     } else if (text.includes('end') || text.includes('stop')) {
       endGuidance();
+    }else if (text.includes('obstacle')) {
+      obstacleAlert();
     }
   };
 
+  const obstacleAlert = () => {
+    speak('Obstacle ahead');
+    vibrateObstacle();
+  };
+
+  
   useEffect(() => {
     startListening(handleVoiceCommand);
 
+    const obstacleTimer = setTimeout(() => {
+      obstacleAlert();
+    }, 5000); // simulate after 5 seconds
+
     return () => {
       stopListening();
+      clearTimeout(obstacleTimer);
     };
   }, []);
 
