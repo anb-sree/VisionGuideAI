@@ -1,13 +1,13 @@
-import React, { useState, useEffect} from 'react';
+// src/screens/HomeScreen.tsx
+
+import React, { useState } from 'react';
 import { View, Text, TextInput, Pressable, StyleSheet } from 'react-native';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
-import { startListening, stopListening } from '../services/voiceService';
-import { speak } from '../services/ttsService';
-import { vibrateObstacle } from '../services/hapticsService';
 
 type RootStackParamList = {
   Home: undefined;
-  Guidance: { destination: string };
+  Guidance: undefined;              // Real-time camera guidance (new logic)
+  Maps: { destination: string };    // Destination-based navigation (renamed from Guidance)
   Settings: undefined;
 };
 
@@ -15,59 +15,26 @@ const HomeScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp<RootStackParamList, 'Home'>>();
   const [destination, setDestination] = useState('');
 
+  // Start real-time camera guidance
   const startGuidance = () => {
-    if (!destination) return;
-
-    speak('Guidance started');
-    navigation.navigate('Guidance', { destination });
+    console.log('🎯 Navigating to Real-Time Guidance');
+    navigation.navigate('Guidance');
   };
 
-  const endGuidance = () => {
-    speak('Guidance ended');
-    stopListening();
-
-  };
-
-  const handleVoiceCommand = (text: string) => {
-    console.log('Voice command:', text);
-
-    if (text.includes('start')) {
-      startGuidance();
-    } else if (text.includes('end') || text.includes('stop')) {
-      endGuidance();
-    }else if (text.includes('obstacle')) {
-      obstacleAlert();
+  // Navigate to maps with destination
+  const openMaps = () => {
+    if (!destination) {
+      console.log('⚠️ Please enter a destination first');
+      return;
     }
+    console.log('🗺️ Navigating to Maps with destination:', destination);
+    navigation.navigate('Maps', { destination });
   };
-
-  const obstacleAlert = () => {
-    speak('Obstacle ahead');
-    vibrateObstacle();
-  };
-
-  
-  useEffect(() => {
-    startListening(handleVoiceCommand);
-
-    const obstacleTimer = setTimeout(() => {
-      obstacleAlert();
-    }, 5000); // simulate after 5 seconds
-
-    return () => {
-      stopListening();
-      clearTimeout(obstacleTimer);
-    };
-  }, []);
-
-
-
 
   return (
     <View style={styles.container}>
       {/* App Title */}
-      <Text style={styles.title}>
-        VisionGuide AI
-      </Text>
+      <Text style={styles.title}>VisionGuide AI</Text>
 
       {/* Destination Input */}
       <TextInput
@@ -79,26 +46,22 @@ const HomeScreen: React.FC = () => {
         accessibilityLabel="Destination input"
       />
 
-      {/* Start Guidance */}
+      {/* Start Real-Time Guidance (Camera + Object Detection) */}
       <Pressable
         style={styles.startButton}
         onPress={startGuidance}
-        accessibilityLabel="Start guidance"
+        accessibilityLabel="Start real-time guidance with camera"
       >
-        <Text style={styles.startButtonText}>
-          Start Guidance
-        </Text>
+        <Text style={styles.startButtonText}>🎯 Start Real-Time Guidance</Text>
       </Pressable>
 
-      {/* End Guidance */}
+      {/* Open Maps View with Destination */}
       <Pressable
-        style={styles.endButton}
-        onPress={endGuidance}
-        accessibilityLabel="End guidance"
+        style={styles.mapsButton}
+        onPress={openMaps}
+        accessibilityLabel="Open maps view"
       >
-        <Text style={styles.endButtonText}>
-          End Guidance
-        </Text>
+        <Text style={styles.mapsButtonText}>🗺️ View Maps</Text>
       </Pressable>
 
       {/* Settings */}
@@ -107,10 +70,14 @@ const HomeScreen: React.FC = () => {
         onPress={() => navigation.navigate('Settings')}
         accessibilityLabel="Open settings"
       >
-        <Text style={styles.settingsButtonText}>
-          Settings
-        </Text>
+        <Text style={styles.settingsButtonText}>⚙️ Settings</Text>
       </Pressable>
+
+      {/* Info Text */}
+      <Text style={styles.infoText}>
+        Real-Time Guidance uses your camera to detect obstacles and provide instructions.
+        Maps view provides destination-based navigation.
+      </Text>
     </View>
   );
 };
@@ -130,13 +97,15 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   input: {
-    backgroundColor: '#fff',
+    backgroundColor: '#333',
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 16,
     fontSize: 18,
     marginBottom: 24,
-    color: '#000',
+    color: '#fff',
+    borderWidth: 1,
+    borderColor: '#444',
   },
   startButton: {
     backgroundColor: '#16a34a',
@@ -150,13 +119,13 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontWeight: '600',
   },
-  endButton: {
-    backgroundColor: '#dc2626',
+  mapsButton: {
+    backgroundColor: '#2563eb',
     paddingVertical: 20,
     borderRadius: 12,
     marginBottom: 16,
   },
-  endButtonText: {
+  mapsButtonText: {
     color: '#fff',
     fontSize: 20,
     textAlign: 'center',
@@ -166,11 +135,19 @@ const styles = StyleSheet.create({
     backgroundColor: '#374151',
     paddingVertical: 16,
     borderRadius: 12,
+    marginBottom: 24,
   },
   settingsButtonText: {
     color: '#fff',
     fontSize: 18,
     textAlign: 'center',
+  },
+  infoText: {
+    color: '#888',
+    fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 20,
+    marginTop: 8,
   },
 });
 

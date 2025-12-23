@@ -54,5 +54,11 @@
 	<key>NSCameraUsageDescription</key>
 	<string>Camera is used for obstacle detection</string>
 	<false/>
+	<key>NSCameraUsageDescription</key>
+	<string>VisionGuide needs camera access for object detection to guide you safely</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>VisionGuide needs microphone access for voice commands</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>VisionGuide needs speech recognition for voice commands</string>
 </dict>
 </plist>
