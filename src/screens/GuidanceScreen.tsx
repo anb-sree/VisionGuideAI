@@ -8,22 +8,50 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
+  Dimensions,
 } from 'react-native';
-import { Camera, useCameraDevice, useCameraPermission } from 'react-native-vision-camera';
+import { Camera, useCameraDevice } from 'react-native-vision-camera';
+import { DetectedObject } from '../types/detection.types';
+import DetectionService from '../services/DetectionService';
+import DetectionOverlay from '../components/DetectionOverlay';
 import PermissionService from '../services/PermissionService';
+
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 const GuidanceScreen = () => {
   const [isGuidanceActive, setIsGuidanceActive] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [hasPermission, setHasPermission] = useState(false);
+  const [detectedObjects, setDetectedObjects] = useState<DetectedObject[]>([]);
+  const [isModelReady, setIsModelReady] = useState(false);
   
   const device = useCameraDevice('back');
   const cameraRef = useRef<Camera>(null);
-  const { hasPermission: cameraPermission } = useCameraPermission();
+  const detectionInterval = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Check permissions on mount
   useEffect(() => {
-    checkPermissions();
+    (async () => {
+      const status = await PermissionService.requestCameraPermission();
+      setHasPermission(status);
+
+      if (!status) {
+        console.log('❌ Camera permission denied');
+        return;
+      }
+
+      await initializeDetection();
+    })();
+  }, []);
+
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (detectionInterval.current) {
+        clearInterval(detectionInterval.current);
+      }
+    };
   }, []);
 
   const checkPermissions = async () => {
@@ -35,13 +63,71 @@ const GuidanceScreen = () => {
     }
   };
 
+  const initializeDetection = async () => {
+    console.log('🔧 Initializing detection service...');
+    const success = await DetectionService.initialize();
+    setIsModelReady(success);
+    
+    if (success) {
+      console.log('✅ Detection service initialized');
+    } else {
+      console.log('⚠️ Detection service failed to initialize');
+      Alert.alert(
+        'Server Connection Failed',
+        'Could not connect to YOLO server. Make sure:\n\n1. Python server is running\n2. SERVER_URL is correct\n3. Both devices on same network',
+        [{ text: 'OK' }]
+      );
+    }
+  };
+
+  const captureAndDetect = async () => {
+    if (!cameraRef.current || !isModelReady) return;
+
+    try {
+      // Take photo
+      const photo = await cameraRef.current.takePhoto({
+        qualityPrioritization: 'speed',
+        enableAutoStabilization: false,
+      });
+
+      // Send to detection service
+      const result = await DetectionService.detectFromImage(
+        `file://${photo.path}`,
+        SCREEN_WIDTH,
+        SCREEN_HEIGHT
+      );
+
+      // Update UI with detections
+      setDetectedObjects(result.objects);
+
+    } catch (error) {
+      console.error('❌ Capture/detect error:', error);
+    }
+  };
+
+  const startDetectionLoop = () => {
+    console.log('🎯 Starting detection loop...');
+    
+    // Capture and detect every 1 second (adjust for performance)
+    detectionInterval.current = setInterval(() => {
+      captureAndDetect();
+    }, 1000);
+  };
+
+  const stopDetectionLoop = () => {
+    if (detectionInterval.current) {
+      clearInterval(detectionInterval.current);
+      detectionInterval.current = null;
+      console.log('⏹️ Detection loop stopped');
+    }
+  };
+
   const handleStartGuidance = async () => {
     console.log('🎬 Start Guidance pressed');
     setIsLoading(true);
 
     try {
-      // Request permission if not granted
-      if (!hasPermission && !cameraPermission) {
+      if (!hasPermission) {
         console.log('📸 Requesting camera permission...');
         const granted = await PermissionService.requestCameraPermission();
         
@@ -58,15 +144,25 @@ const GuidanceScreen = () => {
         setHasPermission(true);
       }
 
-      // Start guidance
+      if (!isModelReady) {
+        Alert.alert(
+          'Server Not Ready',
+          'YOLO detection server is not connected. Please start the server first.',
+          [{ text: 'OK' }]
+        );
+        setIsLoading(false);
+        return;
+      }
+
       console.log('✅ Starting guidance mode...');
       setIsGuidanceActive(true);
       
-      // TODO: Start object detection here (Phase 2)
-      console.log('🎯 Object detection will be connected in Phase 2');
+      // Start detection loop
+      setTimeout(() => {
+        startDetectionLoop();
+      }, 1000);
       
-      // TODO: Start voice announcements here (Phase 3)
-      console.log('🔊 Voice feedback will be connected in Phase 3');
+      console.log('🎯 Real-time object detection active');
 
     } catch (error) {
       console.error('❌ Error starting guidance:', error);
@@ -78,39 +174,49 @@ const GuidanceScreen = () => {
 
   const handleEndGuidance = () => {
     console.log('🛑 End Guidance pressed');
-    
-    // Stop guidance
+    stopDetectionLoop();
     setIsGuidanceActive(false);
-    
-    // TODO: Stop object detection here (Phase 2)
-    console.log('⏹️ Stopping object detection...');
-    
-    // TODO: Stop voice announcements here (Phase 3)
-    console.log('🔇 Stopping voice feedback...');
+    setDetectedObjects([]);
+    console.log('⏹️ Object detection stopped');
   };
 
-  // Show loading state
-  if (device == null) {
+  if (!hasPermission) {
     return (
       <View style={styles.container}>
         <ActivityIndicator size="large" color="#007AFF" />
-        <Text style={styles.loadingText}>Loading camera...</Text>
+        <Text style={styles.loadingText}>Waiting for camera permission...</Text>
       </View>
     );
   }
 
+  if (device == null) {
+    return (
+      <View style={styles.container}>
+        <ActivityIndicator size="large" color="#007AFF" />
+        <Text style={styles.loadingText}>Initializing camera...</Text>
+      </View>
+    );
+  }
+
+
   return (
     <View style={styles.container}>
-      {/* Camera View */}
       {isGuidanceActive && hasPermission ? (
-        <Camera
-          style={StyleSheet.absoluteFill}
-          device={device}
-          isActive={isGuidanceActive}
-          photo={false}
-          video={false}
-          audio={false}
-        />
+        <>
+          <Camera
+            ref={cameraRef}
+            style={StyleSheet.absoluteFill}
+            device={device}
+            isActive={isGuidanceActive}
+            photo={true}
+          />
+          
+          <DetectionOverlay
+            objects={detectedObjects}
+            frameWidth={SCREEN_WIDTH}
+            frameHeight={SCREEN_HEIGHT}
+          />
+        </>
       ) : (
         <View style={styles.infoContainer}>
           <Text style={styles.infoTitle}>🎯 Real-Time Guidance</Text>
@@ -118,18 +224,27 @@ const GuidanceScreen = () => {
             Press "Start Guidance" to activate camera-based object detection.
           </Text>
           <Text style={styles.infoSubtext}>
-            The system will detect obstacles and provide voice instructions.
+            {isModelReady 
+              ? '✅ YOLO server connected and ready'
+              : '⚠️ YOLO server not connected'}
           </Text>
+          {!isModelReady && (
+            <TouchableOpacity 
+              style={styles.retryButton}
+              onPress={initializeDetection}
+            >
+              <Text style={styles.retryButtonText}>🔄 Retry Connection</Text>
+            </TouchableOpacity>
+          )}
         </View>
       )}
 
-      {/* Control Buttons */}
       <View style={styles.controlsContainer}>
         {!isGuidanceActive ? (
           <TouchableOpacity
-            style={[styles.button, styles.startButton]}
+            style={[styles.button, styles.startButton, !isModelReady && styles.buttonDisabled]}
             onPress={handleStartGuidance}
-            disabled={isLoading}
+            disabled={isLoading || !isModelReady}
           >
             {isLoading ? (
               <ActivityIndicator color="#fff" />
@@ -146,20 +261,26 @@ const GuidanceScreen = () => {
           </TouchableOpacity>
         )}
 
-        {/* Debug Info */}
         {__DEV__ && (
           <View style={styles.debugContainer}>
-            <Text style={styles.debugText}>
-              📊 Debug Info:
-            </Text>
+            <Text style={styles.debugText}>📊 Debug Info:</Text>
             <Text style={styles.debugText}>
               Camera: {device ? '✅' : '❌'}
             </Text>
             <Text style={styles.debugText}>
-              Permission: {hasPermission || cameraPermission ? '✅' : '❌'}
+              Permission: {hasPermission ? '✅' : '❌'}
+            </Text>
+            <Text style={styles.debugText}>
+              Server: {isModelReady ? '✅' : '❌'}
             </Text>
             <Text style={styles.debugText}>
               Active: {isGuidanceActive ? '✅' : '❌'}
+            </Text>
+            <Text style={styles.debugText}>
+              Objects: {detectedObjects.length}
+            </Text>
+            <Text style={styles.debugText}>
+              Mode: 🌐 REST API
             </Text>
           </View>
         )}
@@ -199,6 +320,19 @@ const styles = StyleSheet.create({
     color: '#888',
     textAlign: 'center',
     lineHeight: 24,
+    marginBottom: 15,
+  },
+  retryButton: {
+    marginTop: 20,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    backgroundColor: '#007AFF',
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
   controlsContainer: {
     position: 'absolute',
@@ -220,6 +354,9 @@ const styles = StyleSheet.create({
   },
   endButton: {
     backgroundColor: '#dc3545',
+  },
+  buttonDisabled: {
+    backgroundColor: '#666',
   },
   buttonText: {
     color: '#fff',
