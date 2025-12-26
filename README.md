@@ -45,3 +45,22 @@ After running npm install
 Replace the function jcenter() with mavenCentral() in the following files in case of CMake error during build:
 node_modules/react-native-tts/android/build.gradle
 and node_modules/@react-native-voice/voice/android/build.gradle
+
+
+### **To run the app, run the following commands**
+In terminal 1:
+```bash
+cd yolo-server
+python yolo_server.py
+```
+
+In terminal 2:
+```bash
+npx react-native start
+```
+Open the android simulator and keep any device running in the background (mandatory before running the next command)
+
+In terminal 3:
+```bash
+npx react-native run android
+```
