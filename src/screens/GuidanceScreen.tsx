@@ -13,6 +13,7 @@ import {
 import { Camera, useCameraDevice } from 'react-native-vision-camera';
 import { DetectedObject } from '../types/detection.types';
 import DetectionService from '../services/DetectionService';
+import VoiceService from '../services/VoiceService';
 import DetectionOverlay from '../components/DetectionOverlay';
 import PermissionService from '../services/PermissionService';
 
@@ -70,6 +71,13 @@ const GuidanceScreen = () => {
     
     if (success) {
       console.log('✅ Detection service initialized');
+      
+      // Initialize voice service
+      const voiceSuccess = await VoiceService.initialize();
+      if (voiceSuccess) {
+        console.log('✅ Voice service initialized');
+        VoiceService.speak('VisionGuide ready');
+      }
     } else {
       console.log('⚠️ Detection service failed to initialize');
       Alert.alert(
@@ -99,6 +107,9 @@ const GuidanceScreen = () => {
 
       // Update UI with detections
       setDetectedObjects(result.objects);
+
+      // Announce critical objects via voice
+      VoiceService.announceObjects(result.objects);
 
     } catch (error) {
       console.error('❌ Capture/detect error:', error);
@@ -157,6 +168,9 @@ const GuidanceScreen = () => {
       console.log('✅ Starting guidance mode...');
       setIsGuidanceActive(true);
       
+      // Announce start
+      VoiceService.speak('Guidance started');
+      
       // Start detection loop
       setTimeout(() => {
         startDetectionLoop();
@@ -177,6 +191,10 @@ const GuidanceScreen = () => {
     stopDetectionLoop();
     setIsGuidanceActive(false);
     setDetectedObjects([]);
+    
+    // Announce end
+    VoiceService.speak('Guidance ended');
+    
     console.log('⏹️ Object detection stopped');
   };
 
@@ -197,7 +215,6 @@ const GuidanceScreen = () => {
       </View>
     );
   }
-
 
   return (
     <View style={styles.container}>
@@ -228,6 +245,7 @@ const GuidanceScreen = () => {
               ? '✅ YOLO server connected and ready'
               : '⚠️ YOLO server not connected'}
           </Text>
+          
           {!isModelReady && (
             <TouchableOpacity 
               style={styles.retryButton}
@@ -240,6 +258,28 @@ const GuidanceScreen = () => {
       )}
 
       <View style={styles.controlsContainer}>
+        {/* Test Voice Button - Always visible in dev mode */}
+        {__DEV__ && (
+          <TouchableOpacity 
+            style={[styles.button, { backgroundColor: '#FFA500', marginBottom: 10 }]}
+            onPress={() => {
+              console.log('🔊 Test button pressed!');
+              import('react-native-tts').then(Tts => {
+                console.log('🔊 Calling Tts.speak...');
+                Tts.default.speak('Testing one two three', {
+                  androidParams: {
+                    KEY_PARAM_STREAM: 'STREAM_MUSIC',
+                  }
+                });
+              }).catch(err => {
+                console.error('❌ TTS import error:', err);
+              });
+            }}
+          >
+            <Text style={styles.buttonText}>🔊 TEST VOICE</Text>
+          </TouchableOpacity>
+        )}
+        
         {!isGuidanceActive ? (
           <TouchableOpacity
             style={[styles.button, styles.startButton, !isModelReady && styles.buttonDisabled]}
