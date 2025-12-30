@@ -60,6 +60,14 @@ Ex:
 replace testCompile 'junit:junit:4.12'
 **testCompile** with **testImplementation**
 
+In the file:
+node_modules/react-native-voice/android/src/main/java/com/wenkesj/voice/VoiceModule.java
+replace the following part of import :
+**android.support.annotation.NonNull**
+with 
+**androidx.annotation.NonNull**
+
+
 
 ### **To run the app, run the following commands**
 In terminal 1:
