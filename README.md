@@ -46,6 +46,20 @@ Replace the function jcenter() with mavenCentral() in the following files in cas
 node_modules/react-native-tts/android/build.gradle
 and node_modules/@react-native-voice/voice/android/build.gradle
 
+In the following file
+node_modules/react-native-voice/android/build.gradle
+since the dependency is a bit older version.. please update the following
+find the following part in the code:
+dependencies {
+    compile fileTree(dir: 'libs', include: ['*.jar'])
+}
+
+replace **compile** with **implementation**
+and if its a double word with compile as the second word just as above replace it in camel case
+Ex:
+replace testCompile 'junit:junit:4.12'
+**testCompile** with **testImplementation**
+
 
 ### **To run the app, run the following commands**
 In terminal 1:
