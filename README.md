@@ -41,55 +41,55 @@ npx react-native run-ios
 ``` 
 
 ### **Some changes to be done after initial setup"
-After running npm install
+- After running npm install
 
-Replace the function jcenter() with mavenCentral() in the following files in case of CMake error during build:
+    Replace the function jcenter() with mavenCentral() in the following files in case of CMake error during build:
 
-node_modules/react-native-tts/android/build.gradle
+    node_modules/react-native-tts/android/build.gradle
 
-and node_modules/@react-native-voice/voice/android/build.gradle
+    and node_modules/@react-native-voice/voice/android/build.gradle
 
 
 
-In the following file
+- In the following file
 
-node_modules/react-native-voice/android/build.gradle
+    node_modules/react-native-voice/android/build.gradle
 
-since the dependency is a bit older version.. please update the following
+    since the dependency is a bit older version.. please update the following
 
-find the following part in the code:
+    find the following part in the code:
 
-dependencies {
+    dependencies {
 
-    compile fileTree(dir: 'libs', include: ['*.jar'])
+        compile fileTree(dir: 'libs', include: ['*.jar'])
     
-}
+    }
 
 
-replace **compile** with **implementation**
+    replace **compile** with **implementation**
 
-and if its a double word with compile as the second word just as above replace it in camel case
+- and if its a double word with compile as the second word just as above replace it in camel case
 
-Ex:
+    Ex:
 
-replace testCompile 'junit:junit:4.12'
+    replace testCompile 'junit:junit:4.12'
 
-**testCompile** with **testImplementation**
-
-
+    **testCompile** with **testImplementation**
 
 
-In the file:
 
-node_modules/react-native-voice/android/src/main/java/com/wenkesj/voice/VoiceModule.java
 
-replace the following part of import :
+- In the file:
 
-**android.support.annotation.NonNull**
+    node_modules/react-native-voice/android/src/main/java/com/wenkesj/voice/VoiceModule.java
 
-with 
+    replace the following part of import :
 
-**androidx.annotation.NonNull**
+    **android.support.annotation.NonNull**
+
+    with 
+
+    **androidx.annotation.NonNull**
 
 
 
