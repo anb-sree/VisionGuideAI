@@ -40,7 +40,7 @@ ios:
 npx react-native run-ios
 ``` 
 
-### **Some changes to be done after initial setup"
+# Some changes to be done after initial setup"
 - After running npm install
 
     Replace the function jcenter() with mavenCentral() in the following files in case of CMake error during build:
@@ -113,20 +113,3 @@ npx react-native run android
 
 
 
-### **To run the app, run the following commands**
-In terminal 1:
-```bash
-cd yolo-server
-python yolo_server.py
-```
-
-In terminal 2:
-```bash
-npx react-native start
-```
-Open the android simulator and keep any device running in the background (mandatory before running the next command)
-
-In terminal 3:
-```bash
-npx react-native run android
-```
