@@ -1,115 +1,222 @@
 # VisionGuideAI
-AI Companion for the Visually Impaired
 
-VisionGuideAI is a mobile application built with React Native designed to assist visually impaired users. This README covers **Phase 0**: initial setup and project scaffolding.
+**AI Companion for the Visually Impaired**
+
+VisionGuideAI is a React Native mobile application designed to assist visually impaired users through AI-powered object detection and voice guidance.
+
+
+---
+
+## Important Note About API Keys
+
+For security reasons, **Firebase API keys are NOT committed to this repository**.
+
+Each contributor **must create/download their own Firebase configuration file** (`google-services.json`) before the app will run.
+
+This is intentional and required.
 
 ---
 
 ## Prerequisites
 
-- Node.js (v18+)
-- React Native CLI
-- Android Studio / Xcode (for mobile testing)
+* Node.js **v18+**
+* React Native CLI
+* Android Studio (for Android development)
+* Python 3.8+ (for YOLO server)
+* A Google account (for Firebase setup)
 
 ---
 
-## Phase 0 Quick Setup
+## Quick Setup
 
-1. **Clone the repository**
+### 1. Clone the repository
 
 ```bash
 git clone https://github.com/anb-sree/VisionGuideAI.git
 cd VisionGuideAI
-
 ```
 
-2. **Install dependencies**
+---
+
+### 2. Install dependencies
+
 ```bash
 npm install
 ```
-3. **Run the app**
-Android:
-```bash
-npx react-native run-android
+
+---
+
+## Firebase Setup (REQUIRED)
+
+### Step 1: Create a Firebase project
+
+1. Go to **Firebase Console**
+2. Click **Add project**
+3. Create a new project (or use an existing one)
+
+---
+
+### Step 2: Register Android app in Firebase
+
+1. Open **Project Settings**
+2. Click **Add app → Android**
+3. Enter package name:
+
+   ```
+   com.visionguideai
+   ```
+4. Skip SHA-1 for now (you can add it later)
+5. Download **google-services.json**
+
+---
+
+### Step 3: Place the Firebase config file
+
+Move the downloaded file to:
 
 ```
+android/app/google-services.json
+```
 
+**Do NOT commit this file**
+It is already included in `.gitignore`.
 
-ios:
+---
+
+### Step 4: (Recommended) Add SHA-1 fingerprint
+
+For proper API key restriction:
+
 ```bash
-npx react-native run-ios
-``` 
+cd android
+./gradlew signingReport
+```
 
-# Some changes to be done after initial setup"
-- After running npm install
+Copy the **debug SHA-1** and add it in:
 
-    Replace the function jcenter() with mavenCentral() in the following files in case of CMake error during build:
+```
+Firebase Console → Project Settings → Android app → Add fingerprint
+```
 
-    node_modules/react-native-tts/android/build.gradle
+Then **re-download `google-services.json`** and replace the old one.
 
-    and node_modules/@react-native-voice/voice/android/build.gradle
+---
 
+## Running the App
 
+### Android
 
-- In the following file
+```bash
+npx react-native run-android
+```
+---
 
-    node_modules/react-native-voice/android/build.gradle
+## Required Fixes After `npm install`
 
-    since the dependency is a bit older version.. please update the following
+Some dependencies use deprecated Android configs. Apply the following fixes **once** after installation.
 
-    find the following part in the code:
+---
 
-    dependencies {
+### Fix 1: Replace `jcenter()` with `mavenCentral()`
 
-        compile fileTree(dir: 'libs', include: ['*.jar'])
-    
-    }
+Update **both** files:
 
+```
+node_modules/react-native-tts/android/build.gradle
+node_modules/@react-native-voice/voice/android/build.gradle
+```
 
-    replace **compile** with **implementation**
+Replace:
 
-- and if its a double word with compile as the second word just as above replace it in camel case
+```gradle
+jcenter()
+```
 
-    Ex:
+With:
 
-    replace testCompile 'junit:junit:4.12'
+```gradle
+mavenCentral()
+```
 
-    **testCompile** with **testImplementation**
+---
 
+### Fix 2: Update deprecated `compile` dependencies
 
+File:
 
+```
+node_modules/react-native-voice/android/build.gradle
+```
 
-- In the file:
+Replace:
 
-    node_modules/react-native-voice/android/src/main/java/com/wenkesj/voice/VoiceModule.java
+```gradle
+compile fileTree(dir: 'libs', include: ['*.jar'])
+```
 
-    replace the following part of import :
+With:
 
-    **android.support.annotation.NonNull**
+```gradle
+implementation fileTree(dir: 'libs', include: ['*.jar'])
+```
 
-    with 
+Also update:
 
-    **androidx.annotation.NonNull**
+* `testCompile` → `testImplementation`
+* Any similar deprecated variants
 
+---
 
+### Fix 3: AndroidX import issue
 
-### **To run the app, run the following commands**
-In terminal 1:
+File:
+
+```
+node_modules/react-native-voice/android/src/main/java/com/wenkesj/voice/VoiceModule.java
+```
+
+Replace:
+
+```java
+import android.support.annotation.NonNull;
+```
+
+With:
+
+```java
+import androidx.annotation.NonNull;
+```
+
+---
+
+## YOLO Server (Required for Object Detection)
+
+### Terminal 1 – Start YOLO server
+
 ```bash
 cd yolo-server
 python yolo_server.py
 ```
 
-In terminal 2:
+---
+
+### Terminal 2 – Start Metro Bundler
+
 ```bash
 npx react-native start
 ```
-Open the android simulator and keep any device running in the background (mandatory before running the next command)
 
-In terminal 3:
+---
+
+### Terminal 3 – Run Android app
+
+> Ensure an Android emulator or physical device is already running.
+
 ```bash
-npx react-native run android
+npx react-native run-android
 ```
+
+
 
 
 
