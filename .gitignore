@@ -78,6 +78,9 @@ yarn-error.log
 .env
 .env.*
 
+# json file
+android/app/google-services.json
+
 # VS Code
 *.log
 .vscode/
