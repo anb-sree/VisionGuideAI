@@ -98,13 +98,43 @@ class PermissionService {
   }
 
   /**
+   * Request location permission
+   */
+  async requestLocationPermission(): Promise<boolean> {
+    try {
+      if (Platform.OS === 'android') {
+        const granted = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+          {
+            title: 'Location Permission',
+            message: 'VisionGuide needs access to your location for navigation',
+            buttonNeutral: 'Ask Me Later',
+            buttonNegative: 'Cancel',
+            buttonPositive: 'OK',
+          }
+        );
+        
+        return granted === PermissionsAndroid.RESULTS.GRANTED;
+      } else {
+        // For iOS, the permission is handled by the OS when the location is requested
+        // but we can add a check if needed.
+        return true;
+      }
+    } catch (error) {
+      console.error('Error requesting location permission:', error);
+      return false;
+    }
+  }
+
+  /**
    * Request all required permissions at once
    */
-  async requestAllPermissions(): Promise<{camera: boolean; microphone: boolean}> {
+  async requestAllPermissions(): Promise<{camera: boolean; microphone: boolean; location: boolean}> {
     const camera = await this.requestCameraPermission();
     const microphone = await this.requestMicrophonePermission();
+    const location = await this.requestLocationPermission();
     
-    return { camera, microphone };
+    return { camera, microphone, location };
   }
 }
 
