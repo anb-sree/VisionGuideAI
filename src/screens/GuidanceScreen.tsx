@@ -303,15 +303,15 @@ const GuidanceScreen = () => {
 
         {__DEV__ && (
           <View style={styles.debugContainer}>
-            <Text style={styles.debugText}>📊 Debug Info:</Text>
+            <Text style={styles.debugText}> Debug Info:</Text>
             <Text style={styles.debugText}>
-              Camera: {device ? '✅' : '❌'}
+              Camera: {device ? 'Working' : 'Failed to load camera'}
             </Text>
             <Text style={styles.debugText}>
-              Permission: {hasPermission ? '✅' : '❌'}
+              Permission: {hasPermission ? 'Permissions accessed' : 'Please check with the device permissions'}
             </Text>
             <Text style={styles.debugText}>
-              Server: {isModelReady ? '✅' : '❌'}
+              Server: {isModelReady ? 'Server loaded succesfully' : 'Failed to load the server'}
             </Text>
             <Text style={styles.debugText}>
               Active: {isGuidanceActive ? '✅' : '❌'}
@@ -320,7 +320,7 @@ const GuidanceScreen = () => {
               Objects: {detectedObjects.length}
             </Text>
             <Text style={styles.debugText}>
-              Mode: 🌐 REST API
+              Mode:  REST API
             </Text>
           </View>
         )}
