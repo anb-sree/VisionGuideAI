@@ -7,20 +7,34 @@ class VoiceService {
   private isInitialized = false;
   private lastAnnouncement: string = '';
   private lastAnnouncementTime: number = 0;
-  private announcementCooldown: number = 3000; // 3 seconds between same announcement
+  private announcementCooldown: number = 3000;
+  private isSpeaking: boolean = false;
+  private announcedObjects: Map<string, number> = new Map();
 
-  /**
-   * Initialize TTS
-   */
   async initialize(): Promise<boolean> {
     try {
       console.log('🔊 Initializing Text-to-Speech...');
 
       await Tts.getInitStatus();
       await Tts.setDefaultLanguage('en-US');
-      await Tts.setDefaultRate(0.5); // Speech speed
-      await Tts.setDefaultPitch(1.0); // Voice pitch
-      await Tts.setDucking(true); // Lower other audio when speaking
+      await Tts.setDefaultRate(0.6);
+      await Tts.setDefaultPitch(1.0);
+      await Tts.setDucking(true);
+
+      Tts.addEventListener('tts-start', () => {
+        this.isSpeaking = true;
+        console.log('🔊 Started speaking');
+      });
+
+      Tts.addEventListener('tts-finish', () => {
+        this.isSpeaking = false;
+        console.log('🔊 Finished speaking');
+      });
+
+      Tts.addEventListener('tts-cancel', () => {
+        this.isSpeaking = false;
+        console.log('🔊 Speech cancelled');
+      });
 
       this.isInitialized = true;
       console.log('✅ TTS initialized');
@@ -33,35 +47,36 @@ class VoiceService {
     }
   }
 
-  /**
-   * Check if service is ready
-   */
   isReady(): boolean {
     return this.isInitialized;
   }
 
-  /**
-   * Speak text
-   */
   speak(text: string, force: boolean = false): void {
     if (!text) return;
 
     try {
-      // Prevent repeating same announcement too quickly
+      if (!force && this.isSpeaking) {
+        console.log('⏭️ Skipping announcement - already speaking');
+        return;
+      }
+
       if (!force && text === this.lastAnnouncement) {
         const timeSinceLastAnnouncement = Date.now() - this.lastAnnouncementTime;
         if (timeSinceLastAnnouncement < this.announcementCooldown) {
-          return; // Skip duplicate announcement
+          console.log('⏭️ Skipping duplicate announcement');
+          return;
         }
       }
 
       console.log(`🔊 Speaking: "${text}"`);
       
-      // Stop any current speech
       Tts.stop();
       
-      // Speak the text
-      Tts.speak(text);
+      Tts.speak(text, {
+        androidParams: {
+          KEY_PARAM_STREAM: 'STREAM_MUSIC',
+        }
+      });
 
       this.lastAnnouncement = text;
       this.lastAnnouncementTime = Date.now();
@@ -71,122 +86,148 @@ class VoiceService {
     }
   }
 
-  /**
-   * Stop speaking
-   */
   stop(): void {
     try {
       Tts.stop();
+      this.isSpeaking = false;
     } catch (error) {
       console.error('❌ Error stopping TTS:', error);
     }
   }
 
-  /**
-   * Announce detected objects
-   */
   announceObjects(objects: DetectedObject[]): void {
     if (!this.isReady() || objects.length === 0) {
       return;
     }
 
-    // Get critical objects (closest, centered, high priority)
-    const criticalObjects = this.getCriticalObjects(objects);
-
-    if (criticalObjects.length === 0) {
+    if (this.isSpeaking) {
+      console.log('⏭️ Skipping - TTS is busy');
       return;
     }
 
-    // Announce the most important object
-    const mostImportant = criticalObjects[0];
-    const announcement = this.formatAnnouncement(mostImportant);
-    
-    this.speak(announcement);
+    const navigationGuidance = this.generateNavigationGuidance(objects);
+
+    if (!navigationGuidance) {
+      return;
+    }
+
+    const guidanceKey = navigationGuidance;
+    const lastAnnouncedTime = this.announcedObjects.get(guidanceKey) || 0;
+    const timeSinceLastAnnouncement = Date.now() - lastAnnouncedTime;
+
+    if (timeSinceLastAnnouncement < this.announcementCooldown) {
+      console.log(`⏭️ Skipping - recently announced: ${guidanceKey}`);
+      return;
+    }
+
+    this.speak(navigationGuidance);
+    this.announcedObjects.set(guidanceKey, Date.now());
+
+    setTimeout(() => {
+      this.announcedObjects.delete(guidanceKey);
+    }, this.announcementCooldown);
   }
 
-  /**
-   * Get critical objects that need immediate announcement
-   */
-  private getCriticalObjects(objects: DetectedObject[]): DetectedObject[] {
-    return objects
-      .filter(obj => {
-        // Only announce if confidence is high enough
-        if (obj.confidence < 0.6) return false;
+  private generateNavigationGuidance(objects: DetectedObject[]): string | null {
+    const criticalObjects = objects.filter(obj => obj.confidence > 0.5);
 
-        // Critical: Object in center and close
-        if (obj.position === 'center' && 
-            (obj.distance === 'very close' || obj.distance === 'close')) {
-          return true;
+    if (criticalObjects.length === 0) {
+      return null;
+    }
+
+    const centerObjects = criticalObjects.filter(obj => obj.position === 'center');
+    const leftObjects = criticalObjects.filter(obj => obj.position === 'left');
+    const rightObjects = criticalObjects.filter(obj => obj.position === 'right');
+
+    const veryCloseCenter = centerObjects.filter(obj => obj.distance === 'very close');
+    const closeCenter = centerObjects.filter(obj => obj.distance === 'close');
+    const veryCloseLeft = leftObjects.filter(obj => obj.distance === 'very close');
+    const veryCloseRight = rightObjects.filter(obj => obj.distance === 'very close');
+
+    if (veryCloseCenter.length > 0) {
+      const obj = veryCloseCenter[0];
+      const objectName = this.getObjectName(obj.class);
+      
+      if (veryCloseLeft.length > 0 && veryCloseRight.length === 0) {
+        return `${objectName} ahead. Move right`;
+      } else if (veryCloseRight.length > 0 && veryCloseLeft.length === 0) {
+        return `${objectName} ahead. Move left`;
+      } else if (veryCloseLeft.length === 0 && veryCloseRight.length === 0) {
+        if (leftObjects.length < rightObjects.length) {
+          return `${objectName} ahead. Move left`;
+        } else {
+          return `${objectName} ahead. Move right`;
         }
+      } else {
+        return `${objectName} blocking path. Stop`;
+      }
+    }
 
-        // Critical: Object very close on any side
-        if (obj.distance === 'very close') {
-          return true;
-        }
+    if (closeCenter.length > 0) {
+      const obj = closeCenter[0];
+      const objectName = this.getObjectName(obj.class);
+      
+      if (leftObjects.length < rightObjects.length) {
+        return `${objectName} ahead. Move left`;
+      } else {
+        return `${objectName} ahead. Move right`;
+      }
+    }
 
-        return false;
-      })
-      .sort((a, b) => {
-        // Sort by priority
-        const getPriority = (obj: DetectedObject) => {
-          let priority = 0;
+    if (veryCloseLeft.length > 0) {
+      const obj = veryCloseLeft[0];
+      const objectName = this.getObjectName(obj.class);
+      return `${objectName} on left. Move right`;
+    }
 
-          // Distance priority
-          if (obj.distance === 'very close') priority += 100;
-          else if (obj.distance === 'close') priority += 50;
-          else if (obj.distance === 'medium') priority += 20;
+    if (veryCloseRight.length > 0) {
+      const obj = veryCloseRight[0];
+      const objectName = this.getObjectName(obj.class);
+      return `${objectName} on right. Move left`;
+    }
 
-          // Position priority
-          if (obj.position === 'center') priority += 30;
-          else priority += 10;
+    const sortedByPriority = criticalObjects.sort((a, b) => {
+      const getPriority = (obj: DetectedObject) => {
+        let priority = 0;
+        if (obj.distance === 'very close') priority += 100;
+        else if (obj.distance === 'close') priority += 50;
+        else if (obj.distance === 'medium') priority += 20;
+        
+        if (obj.position === 'center') priority += 30;
+        priority += obj.confidence * 10;
+        return priority;
+      };
+      return getPriority(b) - getPriority(a);
+    });
 
-          // Confidence priority
-          priority += obj.confidence * 10;
+    if (sortedByPriority.length > 0) {
+      const obj = sortedByPriority[0];
+      const objectName = this.getObjectName(obj.class);
+      
+      if (obj.position === 'left') {
+        return `${objectName} on left`;
+      } else if (obj.position === 'right') {
+        return `${objectName} on right`;
+      } else {
+        return `${objectName} ahead`;
+      }
+    }
 
-          return priority;
-        };
-
-        return getPriority(b) - getPriority(a);
-      });
+    return null;
   }
 
-  /**
-   * Format announcement for an object
-   */
-  private formatAnnouncement(obj: DetectedObject): string {
-    const objectName = this.getObjectName(obj.class);
-    const distance = obj.distance;
-    const position = obj.position;
-
-    // Different announcement styles based on urgency
-    if (distance === 'very close' && position === 'center') {
-      return `Warning! ${objectName} directly ahead, very close!`;
-    }
-
-    if (distance === 'very close') {
-      return `${objectName} very close on your ${position}`;
-    }
-
-    if (distance === 'close' && position === 'center') {
-      return `${objectName} ahead`;
-    }
-
-    return `${objectName} on your ${position}`;
-  }
-
-  /**
-   * Get friendly object name
-   */
   private getObjectName(className: string): string {
     const friendlyNames: { [key: string]: string } = {
       'person': 'person',
-      'car': 'vehicle',
+      'car': 'car',
       'truck': 'truck',
       'bus': 'bus',
-      'bicycle': 'bicycle',
+      'bicycle': 'bike',
       'motorcycle': 'motorcycle',
       'chair': 'chair',
       'couch': 'sofa',
+      'bed': 'bed',
+      'dining table': 'table',
       'door': 'door',
       'cell phone': 'phone',
       'laptop': 'laptop',
@@ -195,23 +236,41 @@ class VoiceService {
       'book': 'book',
       'traffic light': 'traffic light',
       'stop sign': 'stop sign',
+      'bench': 'bench',
+      'backpack': 'bag',
+      'handbag': 'bag',
+      'suitcase': 'suitcase',
+      'umbrella': 'umbrella',
+      'tv': 'TV',
+      'oven': 'oven',
+      'microwave': 'microwave',
+      'refrigerator': 'fridge',
+      'sink': 'sink',
+      'toilet': 'toilet',
+      'potted plant': 'plant',
     };
 
     return friendlyNames[className] || className;
   }
 
-  /**
-   * Set announcement cooldown (time between repeated announcements)
-   */
   setCooldown(milliseconds: number): void {
     this.announcementCooldown = milliseconds;
   }
 
-  /**
-   * Cleanup
-   */
+  clearTracking(): void {
+    this.announcedObjects.clear();
+    this.lastAnnouncement = '';
+    console.log('🧹 Cleared announcement tracking');
+  }
+
   dispose(): void {
     this.stop();
+    this.clearTracking();
+    
+    Tts.removeAllListeners('tts-start');
+    Tts.removeAllListeners('tts-finish');
+    Tts.removeAllListeners('tts-cancel');
+    
     this.isInitialized = false;
     console.log('🧹 Voice service disposed');
   }

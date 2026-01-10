@@ -30,7 +30,6 @@ const GuidanceScreen = () => {
   const cameraRef = useRef<Camera>(null);
   const detectionInterval = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Check permissions on mount
   useEffect(() => {
     (async () => {
       const status = await PermissionService.requestCameraPermission();
@@ -45,8 +44,6 @@ const GuidanceScreen = () => {
     })();
   }, []);
 
-
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (detectionInterval.current) {
@@ -72,7 +69,6 @@ const GuidanceScreen = () => {
     if (success) {
       console.log('✅ Detection service initialized');
       
-      // Initialize voice service
       const voiceSuccess = await VoiceService.initialize();
       if (voiceSuccess) {
         console.log('✅ Voice service initialized');
@@ -92,23 +88,19 @@ const GuidanceScreen = () => {
     if (!cameraRef.current || !isModelReady) return;
 
     try {
-      // Take photo
       const photo = await cameraRef.current.takePhoto({
         qualityPrioritization: 'speed',
         enableAutoStabilization: false,
       });
 
-      // Send to detection service
       const result = await DetectionService.detectFromImage(
         `file://${photo.path}`,
         SCREEN_WIDTH,
         SCREEN_HEIGHT
       );
 
-      // Update UI with detections
       setDetectedObjects(result.objects);
 
-      // Announce critical objects via voice
       VoiceService.announceObjects(result.objects);
 
     } catch (error) {
@@ -119,10 +111,9 @@ const GuidanceScreen = () => {
   const startDetectionLoop = () => {
     console.log('🎯 Starting detection loop...');
     
-    // Capture and detect every 1 second (adjust for performance)
     detectionInterval.current = setInterval(() => {
       captureAndDetect();
-    }, 1000);
+    }, 2000);
   };
 
   const stopDetectionLoop = () => {
@@ -168,10 +159,8 @@ const GuidanceScreen = () => {
       console.log('✅ Starting guidance mode...');
       setIsGuidanceActive(true);
       
-      // Announce start
       VoiceService.speak('Guidance started');
       
-      // Start detection loop
       setTimeout(() => {
         startDetectionLoop();
       }, 1000);
@@ -192,7 +181,8 @@ const GuidanceScreen = () => {
     setIsGuidanceActive(false);
     setDetectedObjects([]);
     
-    // Announce end
+    VoiceService.clearTracking();
+    
     VoiceService.speak('Guidance ended');
     
     console.log('⏹️ Object detection stopped');
@@ -258,7 +248,6 @@ const GuidanceScreen = () => {
       )}
 
       <View style={styles.controlsContainer}>
-        {/* Test Voice Button - Always visible in dev mode */}
         {__DEV__ && (
           <TouchableOpacity 
             style={[styles.button, { backgroundColor: '#FFA500', marginBottom: 10 }]}
