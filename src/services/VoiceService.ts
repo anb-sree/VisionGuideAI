@@ -23,17 +23,14 @@ class VoiceService {
 
       Tts.addEventListener('tts-start', () => {
         this.isSpeaking = true;
-        console.log('🔊 Started speaking');
       });
 
       Tts.addEventListener('tts-finish', () => {
         this.isSpeaking = false;
-        console.log('🔊 Finished speaking');
       });
 
       Tts.addEventListener('tts-cancel', () => {
         this.isSpeaking = false;
-        console.log('🔊 Speech cancelled');
       });
 
       this.isInitialized = true;
@@ -56,22 +53,19 @@ class VoiceService {
 
     try {
       if (!force && this.isSpeaking) {
-        console.log('⏭️ Skipping announcement - already speaking');
         return;
       }
 
       if (!force && text === this.lastAnnouncement) {
         const timeSinceLastAnnouncement = Date.now() - this.lastAnnouncementTime;
         if (timeSinceLastAnnouncement < this.announcementCooldown) {
-          console.log('⏭️ Skipping duplicate announcement');
           return;
         }
       }
 
-      console.log(`🔊 Speaking: "${text}"`);
+      console.log(`🔊 "${text}"`);
       
       Tts.stop();
-      
       Tts.speak(text, {
         androidParams: {
           KEY_PARAM_STREAM: 'STREAM_MUSIC',
@@ -101,7 +95,6 @@ class VoiceService {
     }
 
     if (this.isSpeaking) {
-      console.log('⏭️ Skipping - TTS is busy');
       return;
     }
 
@@ -116,7 +109,6 @@ class VoiceService {
     const timeSinceLastAnnouncement = Date.now() - lastAnnouncedTime;
 
     if (timeSinceLastAnnouncement < this.announcementCooldown) {
-      console.log(`⏭️ Skipping - recently announced: ${guidanceKey}`);
       return;
     }
 
@@ -129,87 +121,120 @@ class VoiceService {
   }
 
   private generateNavigationGuidance(objects: DetectedObject[]): string | null {
+    // Filter high-confidence objects
     const criticalObjects = objects.filter(obj => obj.confidence > 0.5);
 
     if (criticalObjects.length === 0) {
       return null;
     }
 
+    // Log detected objects for debugging
+    console.log('🎯 Detected:', criticalObjects.map(obj => 
+      `${obj.class}[${obj.position},${obj.distance}]`
+    ).join(' '));
+
+    // Group by position
     const centerObjects = criticalObjects.filter(obj => obj.position === 'center');
     const leftObjects = criticalObjects.filter(obj => obj.position === 'left');
     const rightObjects = criticalObjects.filter(obj => obj.position === 'right');
 
+    // Group by distance
     const veryCloseCenter = centerObjects.filter(obj => obj.distance === 'very close');
     const closeCenter = centerObjects.filter(obj => obj.distance === 'close');
     const veryCloseLeft = leftObjects.filter(obj => obj.distance === 'very close');
     const veryCloseRight = rightObjects.filter(obj => obj.distance === 'very close');
 
+    // PRIORITY 1: Very close object in CENTER path
     if (veryCloseCenter.length > 0) {
       const obj = veryCloseCenter[0];
-      const objectName = this.getObjectName(obj.class);
+      const name = this.getObjectName(obj.class);
       
+      // Both sides blocked - STOP
+      if (veryCloseLeft.length > 0 && veryCloseRight.length > 0) {
+        return `${name} blocking path. Stop`;
+      }
+      
+      // Right blocked, left clear
+      if (veryCloseRight.length > 0 && veryCloseLeft.length === 0) {
+        return `${name} ahead. Move left`;
+      }
+      
+      // Left blocked, right clear
       if (veryCloseLeft.length > 0 && veryCloseRight.length === 0) {
-        return `${objectName} ahead. Move right`;
-      } else if (veryCloseRight.length > 0 && veryCloseLeft.length === 0) {
-        return `${objectName} ahead. Move left`;
-      } else if (veryCloseLeft.length === 0 && veryCloseRight.length === 0) {
-        if (leftObjects.length < rightObjects.length) {
-          return `${objectName} ahead. Move left`;
-        } else {
-          return `${objectName} ahead. Move right`;
-        }
+        return `${name} ahead. Move right`;
+      }
+      
+      // Both clear - choose side with fewer obstacles
+      if (leftObjects.length < rightObjects.length) {
+        return `${name} ahead. Move left`;
+      } else if (rightObjects.length < leftObjects.length) {
+        return `${name} ahead. Move right`;
       } else {
-        return `${objectName} blocking path. Stop`;
+        return `${name} ahead. Move left`;
       }
     }
 
+    // PRIORITY 2: Close object in CENTER
     if (closeCenter.length > 0) {
       const obj = closeCenter[0];
-      const objectName = this.getObjectName(obj.class);
+      const name = this.getObjectName(obj.class);
       
       if (leftObjects.length < rightObjects.length) {
-        return `${objectName} ahead. Move left`;
+        return `${name} ahead. Move left`;
+      } else if (rightObjects.length < leftObjects.length) {
+        return `${name} ahead. Move right`;
       } else {
-        return `${objectName} ahead. Move right`;
+        return `${name} ahead. Move left`;
       }
     }
 
+    // PRIORITY 3: Very close on LEFT
     if (veryCloseLeft.length > 0) {
       const obj = veryCloseLeft[0];
-      const objectName = this.getObjectName(obj.class);
-      return `${objectName} on left. Move right`;
+      const name = this.getObjectName(obj.class);
+      return `${name} on left. Move right`;
     }
 
+    // PRIORITY 4: Very close on RIGHT
     if (veryCloseRight.length > 0) {
       const obj = veryCloseRight[0];
-      const objectName = this.getObjectName(obj.class);
-      return `${objectName} on right. Move left`;
+      const name = this.getObjectName(obj.class);
+      return `${name} on right. Move left`;
     }
 
-    const sortedByPriority = criticalObjects.sort((a, b) => {
+    // PRIORITY 5: General awareness
+    const sortedByPriority = [...criticalObjects].sort((a, b) => {
       const getPriority = (obj: DetectedObject) => {
-        let priority = 0;
-        if (obj.distance === 'very close') priority += 100;
-        else if (obj.distance === 'close') priority += 50;
-        else if (obj.distance === 'medium') priority += 20;
+        let score = 0;
         
-        if (obj.position === 'center') priority += 30;
-        priority += obj.confidence * 10;
-        return priority;
+        // Distance score
+        if (obj.distance === 'very close') score += 100;
+        else if (obj.distance === 'close') score += 50;
+        else if (obj.distance === 'medium') score += 25;
+        else score += 10;
+        
+        // Position score
+        if (obj.position === 'center') score += 40;
+        else if (obj.position === 'left' || obj.position === 'right') score += 20;
+        
+        // Confidence
+        score += obj.confidence * 15;
+        
+        return score;
       };
       return getPriority(b) - getPriority(a);
     });
 
     if (sortedByPriority.length > 0) {
       const obj = sortedByPriority[0];
-      const objectName = this.getObjectName(obj.class);
+      const name = this.getObjectName(obj.class);
       
-      if (obj.position === 'left') {
-        return `${objectName} on left`;
+      if (obj.position === 'center') {
+        return `${name} ahead`;
+      } else if (obj.position === 'left') {
+        return `${name} on left`;
       } else if (obj.position === 'right') {
-        return `${objectName} on right`;
-      } else {
-        return `${objectName} ahead`;
+        return `${name} on right`;
       }
     }
 
@@ -217,7 +242,7 @@ class VoiceService {
   }
 
   private getObjectName(className: string): string {
-    const friendlyNames: { [key: string]: string } = {
+    const names: { [key: string]: string } = {
       'person': 'person',
       'car': 'car',
       'truck': 'truck',
@@ -250,7 +275,7 @@ class VoiceService {
       'potted plant': 'plant',
     };
 
-    return friendlyNames[className] || className;
+    return names[className] || className;
   }
 
   setCooldown(milliseconds: number): void {
@@ -260,7 +285,6 @@ class VoiceService {
   clearTracking(): void {
     this.announcedObjects.clear();
     this.lastAnnouncement = '';
-    console.log('🧹 Cleared announcement tracking');
   }
 
   dispose(): void {
@@ -272,7 +296,6 @@ class VoiceService {
     Tts.removeAllListeners('tts-cancel');
     
     this.isInitialized = false;
-    console.log('🧹 Voice service disposed');
   }
 }
 

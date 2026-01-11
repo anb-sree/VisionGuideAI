@@ -2,10 +2,10 @@
 import { DetectedObject, DetectionResult } from '../types/detection.types';
 import { calculatePosition, estimateDistance } from '../utils/positionCalculator';
 
-// const SERVER_URL = 'http://10.173.217.99:8000'; 
-// this 192.168.1.33 is device IP
-const SERVER_URL = 'http://10.0.2.2:8000'; 
-// const SERVER_URL = 'http://localhost:8000'
+const SERVER_URL = 'http://10.50.63.25:8000'; 
+//use this if running on mobile phone -- this is the system ip address
+// const SERVER_URL = 'http://10.0.2.2:8000'; 
+// for android emulator
 
 class DetectionService {
   private isInitialized = false;

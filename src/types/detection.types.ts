@@ -1,22 +1,30 @@
 // src/types/detection.types.ts
 
+/**
+ * Position of object relative to camera view
+ * 'left', 'center', 'right'
+ */
+export type Position = 'left' | 'center' | 'right';
+
+/**
+ * Estimated distance category
+ */
+export type Distance = 'very close' | 'close' | 'medium' | 'far';
+
+/**
+ * Detected object with all metadata
+ */
 export interface DetectedObject {
-  class: string;           // e.g., "person", "chair", "car"
-  confidence: number;      // 0-1 (e.g., 0.95 = 95% confidence)
-  bbox: BoundingBox;       // Bounding box coordinates
-  position: ObjectPosition; // left, center, or right
-  distance?: string;       // "near", "medium", "far" (estimated)
+  class: string;           // Object class name (e.g., 'person', 'chair')
+  confidence: number;      // Detection confidence (0-1)
+  bbox: number[];          // Bounding box [x1, y1, x2, y2]
+  position: Position;      // Position: 'left', 'center', 'right'
+  distance: Distance;      // Distance: 'very close', 'close', 'medium', 'far'
 }
 
-export interface BoundingBox {
-  x: number;      // Top-left X coordinate
-  y: number;      // Top-left Y coordinate
-  width: number;  // Box width
-  height: number; // Box height
-}
-
-export type ObjectPosition = 'left' | 'center' | 'right';
-
+/**
+ * Detection result with metadata
+ */
 export interface DetectionResult {
   objects: DetectedObject[];
   timestamp: number;
@@ -26,41 +34,20 @@ export interface DetectionResult {
   };
 }
 
-// Priority levels for announcements
-export enum ObjectPriority {
-  CRITICAL = 'critical',  // Immediate obstacles in path
-  HIGH = 'high',          // Nearby objects
-  MEDIUM = 'medium',      // Detected but not immediate
-  LOW = 'low'            // Background objects
+/**
+ * Server detection response format
+ */
+export interface ServerDetection {
+  class: string;
+  confidence: number;
+  bbox: number[];
 }
 
-// Object categories
-export const CRITICAL_OBJECTS = [
-  'person',
-  'bicycle',
-  'car',
-  'motorcycle',
-  'bus',
-  'truck',
-  'traffic light',
-  'stop sign',
-];
-
-export const OBSTACLE_OBJECTS = [
-  'chair',
-  'couch',
-  'potted plant',
-  'bed',
-  'dining table',
-  'toilet',
-  'bench',
-  'fire hydrant',
-  'parking meter',
-];
-
-export const NAVIGATION_OBJECTS = [
-  'door',
-  'stairs',
-  'escalator',
-  'elevator',
-];
+/**
+ * Server response format
+ */
+export interface ServerResponse {
+  success: boolean;
+  detections: ServerDetection[];
+  processing_time?: number;
+}
