@@ -1,6 +1,9 @@
+// src/screens/SettingsScreen.tsx
+
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Switch, Pressable, ScrollView, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import VoiceService from '../services/VoiceService';
 
 interface SettingsState {
   voiceGuidance: boolean;
@@ -8,7 +11,27 @@ interface SettingsState {
   hapticFeedback: boolean;
   autoStart: boolean;
   highContrast: boolean;
+  selectedLanguage: string;
 }
+
+interface Language {
+  code: string;
+  name: string;
+  nativeName: string;
+}
+
+const SUPPORTED_LANGUAGES: Language[] = [
+  { code: 'en-US', name: 'English', nativeName: 'English' },
+  { code: 'hi-IN', name: 'Hindi', nativeName: 'हिन्दी' },
+  { code: 'kn-IN', name: 'Kannada', nativeName: 'ಕನ್ನಡ' },
+  { code: 'te-IN', name: 'Telugu', nativeName: 'తెలుగు' },
+  { code: 'ta-IN', name: 'Tamil', nativeName: 'தமிழ்' },
+  { code: 'ml-IN', name: 'Malayalam', nativeName: 'മലയാളം' },
+  { code: 'bn-IN', name: 'Bengali', nativeName: 'বাংলা' },
+  { code: 'es-ES', name: 'Spanish', nativeName: 'Español' },
+  { code: 'fr-FR', name: 'French', nativeName: 'Français' },
+  { code: 'de-DE', name: 'German', nativeName: 'Deutsch' },
+];
 
 const SettingsScreen: React.FC = () => {
   const [settings, setSettings] = useState<SettingsState>({
@@ -17,7 +40,10 @@ const SettingsScreen: React.FC = () => {
     hapticFeedback: true,
     autoStart: false,
     highContrast: false,
+    selectedLanguage: 'en-US',
   });
+
+  const [showLanguagePicker, setShowLanguagePicker] = useState(false);
 
   useEffect(() => {
     loadSettings();
@@ -27,7 +53,12 @@ const SettingsScreen: React.FC = () => {
     try {
       const savedSettings = await AsyncStorage.getItem('appSettings');
       if (savedSettings) {
-        setSettings(JSON.parse(savedSettings));
+        const parsed = JSON.parse(savedSettings);
+        setSettings(parsed);
+        
+        if (parsed.selectedLanguage) {
+          await VoiceService.setLanguage(parsed.selectedLanguage);
+        }
       }
     } catch (error) {
       console.log('Error loading settings:', error);
@@ -38,6 +69,11 @@ const SettingsScreen: React.FC = () => {
     try {
       await AsyncStorage.setItem('appSettings', JSON.stringify(newSettings));
       setSettings(newSettings);
+      
+      if (newSettings.selectedLanguage !== settings.selectedLanguage) {
+        await VoiceService.setLanguage(newSettings.selectedLanguage);
+      }
+      
       Alert.alert('Success', 'Settings saved successfully');
     } catch (error) {
       Alert.alert('Error', 'Failed to save settings');
@@ -47,6 +83,14 @@ const SettingsScreen: React.FC = () => {
   const toggleSetting = (key: keyof SettingsState) => {
     const newSettings = { ...settings, [key]: !settings[key] };
     saveSettings(newSettings);
+  };
+
+  const selectLanguage = async (languageCode: string) => {
+    const newSettings = { ...settings, selectedLanguage: languageCode };
+    await saveSettings(newSettings);
+    setShowLanguagePicker(false);
+    
+    VoiceService.speak('LANGUAGE_CHANGED');
   };
 
   const resetSettings = () => {
@@ -65,6 +109,7 @@ const SettingsScreen: React.FC = () => {
               hapticFeedback: true,
               autoStart: false,
               highContrast: false,
+              selectedLanguage: 'en-US',
             };
             saveSettings(defaultSettings);
           },
@@ -84,7 +129,6 @@ const SettingsScreen: React.FC = () => {
           style: 'destructive',
           onPress: async () => {
             try {
-              // Clear specific cache keys (preserve settings)
               Alert.alert('Success', 'Cache cleared successfully');
             } catch (error) {
               Alert.alert('Error', 'Failed to clear cache');
@@ -95,8 +139,14 @@ const SettingsScreen: React.FC = () => {
     );
   };
 
+  const getCurrentLanguageName = () => {
+    const lang = SUPPORTED_LANGUAGES.find(l => l.code === settings.selectedLanguage);
+    return lang ? lang.nativeName : 'English';
+  };
+
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+      {/* Accessibility Section */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Accessibility</Text>
         
@@ -161,6 +211,50 @@ const SettingsScreen: React.FC = () => {
         </View>
       </View>
 
+      {/* Language Section */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Language / भाषा / ಭಾಷೆ / భాష</Text>
+        
+        <View style={styles.languageContainer}>
+          <Pressable 
+            style={styles.languageSelector}
+            onPress={() => setShowLanguagePicker(!showLanguagePicker)}
+          >
+            <View style={styles.settingInfo}>
+              <Text style={styles.settingLabel}>Voice Language</Text>
+              <Text style={styles.currentLanguage}>
+                {getCurrentLanguageName()}
+              </Text>
+            </View>
+            <Text style={styles.chevron}>{showLanguagePicker ? '▼' : '▶'}</Text>
+          </Pressable>
+
+          {showLanguagePicker && (
+            <View style={styles.languageList}>
+              {SUPPORTED_LANGUAGES.map((lang) => (
+                <Pressable
+                  key={lang.code}
+                  style={[
+                    styles.languageOption,
+                    settings.selectedLanguage === lang.code && styles.languageOptionSelected
+                  ]}
+                  onPress={() => selectLanguage(lang.code)}
+                >
+                  <View style={styles.languageInfo}>
+                    <Text style={styles.languageNativeName}>{lang.nativeName}</Text>
+                    <Text style={styles.languageName}>{lang.name}</Text>
+                  </View>
+                  {settings.selectedLanguage === lang.code && (
+                    <Text style={styles.checkmark}>✓</Text>
+                  )}
+                </Pressable>
+              ))}
+            </View>
+          )}
+        </View>
+      </View>
+
+      {/* Navigation Section */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Navigation</Text>
         
@@ -180,6 +274,7 @@ const SettingsScreen: React.FC = () => {
         </View>
       </View>
 
+      {/* App Data Section */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>App Data</Text>
         
@@ -192,7 +287,8 @@ const SettingsScreen: React.FC = () => {
         </Pressable>
       </View>
 
-      <View style={styles.section}>
+      {/* About Section */}
+      <View style={[styles.section, styles.lastSection]}>
         <Text style={styles.sectionTitle}>About</Text>
         <Text style={styles.aboutText}>VisionGuide AI</Text>
         <Text style={styles.versionText}>Version 1.0.0</Text>
@@ -203,6 +299,7 @@ const SettingsScreen: React.FC = () => {
         </Text>
       </View>
 
+      {/* Footer */}
       <View style={styles.footer}>
         <Text style={styles.footerText}>
           Made with ❤️ for accessibility
@@ -217,10 +314,17 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#000',
   },
+  contentContainer: {
+    paddingBottom: 40,
+  },
   section: {
-    padding: 20,
+    paddingHorizontal: 20,
+    paddingVertical: 24,
     borderBottomWidth: 1,
     borderBottomColor: '#333',
+  },
+  lastSection: {
+    borderBottomWidth: 0,
   },
   sectionTitle: {
     color: '#fff',
@@ -232,8 +336,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 12,
-    marginBottom: 8,
+    paddingVertical: 14,
+    marginBottom: 4,
   },
   settingInfo: {
     flex: 1,
@@ -241,21 +345,92 @@ const styles = StyleSheet.create({
   },
   settingLabel: {
     color: '#fff',
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '600',
     marginBottom: 4,
   },
   settingDescription: {
     color: '#999',
-    fontSize: 13,
-    lineHeight: 18,
+    fontSize: 14,
+    lineHeight: 20,
   },
-  actionButton: {
-    backgroundColor: '#374151',
-    paddingVertical: 14,
+  
+  // Language Section Styles
+  languageContainer: {
+    width: '100%',
+  },
+  languageSelector: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 16,
     paddingHorizontal: 20,
-    borderRadius: 8,
+    backgroundColor: '#1a1a1a',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#333',
+  },
+  currentLanguage: {
+    color: '#16a34a',
+    fontSize: 16,
+    fontWeight: '600',
+    marginTop: 4,
+  },
+  chevron: {
+    color: '#16a34a',
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+  languageList: {
+    marginTop: 12,
+    backgroundColor: '#1a1a1a',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#333',
+    overflow: 'hidden',
+    maxHeight: 400,
+  },
+  languageOption: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#2a2a2a',
+  },
+  languageOptionSelected: {
+    backgroundColor: '#16a34a15',
+  },
+  languageInfo: {
+    flex: 1,
+  },
+  languageNativeName: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  languageName: {
+    color: '#888',
+    fontSize: 14,
+  },
+  checkmark: {
+    color: '#16a34a',
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginLeft: 12,
+  },
+  
+  // Action Buttons
+  actionButton: {
+    backgroundColor: '#1f2937',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderRadius: 12,
     marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#374151',
   },
   actionButtonText: {
     color: '#fff',
@@ -263,24 +438,28 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontWeight: '600',
   },
+  
+  // About Section
   aboutText: {
     color: '#fff',
-    fontSize: 24,
+    fontSize: 26,
     fontWeight: 'bold',
     marginBottom: 8,
   },
   versionText: {
-    color: '#999',
-    fontSize: 14,
+    color: '#888',
+    fontSize: 15,
     marginBottom: 16,
   },
   descriptionText: {
-    color: '#ccc',
-    fontSize: 14,
-    lineHeight: 22,
+    color: '#bbb',
+    fontSize: 15,
+    lineHeight: 24,
   },
+  
+  // Footer
   footer: {
-    padding: 20,
+    paddingVertical: 30,
     alignItems: 'center',
   },
   footerText: {

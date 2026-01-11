@@ -42,24 +42,13 @@ const GuidanceScreen = () => {
 
       await initializeDetection();
     })();
-  }, []);
 
-  useEffect(() => {
     return () => {
       if (detectionInterval.current) {
         clearInterval(detectionInterval.current);
       }
     };
   }, []);
-
-  const checkPermissions = async () => {
-    const granted = await PermissionService.checkCameraPermission();
-    setHasPermission(granted);
-    
-    if (!granted) {
-      console.log('⚠️ Camera permission not granted yet');
-    }
-  };
 
   const initializeDetection = async () => {
     console.log('🔧 Initializing detection service...');
@@ -72,7 +61,7 @@ const GuidanceScreen = () => {
       const voiceSuccess = await VoiceService.initialize();
       if (voiceSuccess) {
         console.log('✅ Voice service initialized');
-        VoiceService.speak('VisionGuide ready');
+        VoiceService.speak('APP_READY');
       }
     } else {
       console.log('⚠️ Detection service failed to initialize');
@@ -159,7 +148,7 @@ const GuidanceScreen = () => {
       console.log('✅ Starting guidance mode...');
       setIsGuidanceActive(true);
       
-      VoiceService.speak('Guidance started');
+      VoiceService.speak('GUIDANCE_STARTED');
       
       setTimeout(() => {
         startDetectionLoop();
@@ -182,8 +171,7 @@ const GuidanceScreen = () => {
     setDetectedObjects([]);
     
     VoiceService.clearTracking();
-    
-    VoiceService.speak('Guidance ended');
+    VoiceService.speak('GUIDANCE_ENDED');
     
     console.log('⏹️ Object detection stopped');
   };
@@ -248,27 +236,6 @@ const GuidanceScreen = () => {
       )}
 
       <View style={styles.controlsContainer}>
-        {__DEV__ && (
-          <TouchableOpacity 
-            style={[styles.button, { backgroundColor: '#FFA500', marginBottom: 10 }]}
-            onPress={() => {
-              console.log('🔊 Test button pressed!');
-              import('react-native-tts').then(Tts => {
-                console.log('🔊 Calling Tts.speak...');
-                Tts.default.speak('Testing one two three', {
-                  androidParams: {
-                    KEY_PARAM_STREAM: 'STREAM_MUSIC',
-                  }
-                });
-              }).catch(err => {
-                console.error('❌ TTS import error:', err);
-              });
-            }}
-          >
-            <Text style={styles.buttonText}>🔊 TEST VOICE</Text>
-          </TouchableOpacity>
-        )}
-        
         {!isGuidanceActive ? (
           <TouchableOpacity
             style={[styles.button, styles.startButton, !isModelReady && styles.buttonDisabled]}
@@ -292,24 +259,21 @@ const GuidanceScreen = () => {
 
         {__DEV__ && (
           <View style={styles.debugContainer}>
-            <Text style={styles.debugText}> Debug Info:</Text>
+            <Text style={styles.debugText}>Debug Info:</Text>
             <Text style={styles.debugText}>
-              Camera: {device ? 'Working' : 'Failed to load camera'}
+              Camera: {device ? 'Working' : 'Failed'}
             </Text>
             <Text style={styles.debugText}>
-              Permission: {hasPermission ? 'Permissions accessed' : 'Please check with the device permissions'}
+              Permission: {hasPermission ? 'Granted' : 'Denied'}
             </Text>
             <Text style={styles.debugText}>
-              Server: {isModelReady ? 'Server loaded succesfully' : 'Failed to load the server'}
+              Server: {isModelReady ? 'Connected' : 'Disconnected'}
             </Text>
             <Text style={styles.debugText}>
               Active: {isGuidanceActive ? '✅' : '❌'}
             </Text>
             <Text style={styles.debugText}>
               Objects: {detectedObjects.length}
-            </Text>
-            <Text style={styles.debugText}>
-              Mode:  REST API
             </Text>
           </View>
         )}
@@ -349,7 +313,7 @@ const styles = StyleSheet.create({
     color: '#888',
     textAlign: 'center',
     lineHeight: 24,
-    marginBottom: 15,
+    marginBottom: 8,
   },
   retryButton: {
     marginTop: 20,

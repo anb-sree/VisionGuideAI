@@ -1,5 +1,4 @@
 // src/services/PermissionService.ts
-
 import { PermissionsAndroid, Platform, Alert } from 'react-native';
 import { Camera } from 'react-native-vision-camera';
 
@@ -70,7 +69,7 @@ class PermissionService {
   }
 
   /**
-   * Request microphone permission (for voice commands later)
+   * Request microphone permission (for voice commands)
    */
   async requestMicrophonePermission(): Promise<boolean> {
     try {
@@ -79,7 +78,7 @@ class PermissionService {
           PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
           {
             title: 'Microphone Permission',
-            message: 'VisionGuide needs access to your microphone for voice commands',
+            message: 'VisionGuide needs microphone access for voice commands',
             buttonNeutral: 'Ask Me Later',
             buttonNegative: 'Cancel',
             buttonPositive: 'OK',
@@ -88,6 +87,7 @@ class PermissionService {
         
         return granted === PermissionsAndroid.RESULTS.GRANTED;
       } else {
+        // iOS - use Camera module's microphone permission
         const micPermission = await Camera.requestMicrophonePermission();
         return micPermission === 'granted';
       }
@@ -116,8 +116,7 @@ class PermissionService {
         
         return granted === PermissionsAndroid.RESULTS.GRANTED;
       } else {
-        // For iOS, the permission is handled by the OS when the location is requested
-        // but we can add a check if needed.
+        // iOS - location permission is handled by the OS when needed
         return true;
       }
     } catch (error) {
@@ -129,7 +128,11 @@ class PermissionService {
   /**
    * Request all required permissions at once
    */
-  async requestAllPermissions(): Promise<{camera: boolean; microphone: boolean; location: boolean}> {
+  async requestAllPermissions(): Promise<{
+    camera: boolean;
+    microphone: boolean;
+    location: boolean;
+  }> {
     const camera = await this.requestCameraPermission();
     const microphone = await this.requestMicrophonePermission();
     const location = await this.requestLocationPermission();
