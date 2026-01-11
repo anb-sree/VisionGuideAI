@@ -17,7 +17,12 @@ export type Distance = 'very close' | 'close' | 'medium' | 'far';
 export interface DetectedObject {
   class: string;           // Object class name (e.g., 'person', 'chair')
   confidence: number;      // Detection confidence (0-1)
-  bbox: number[];          // Bounding box [x1, y1, x2, y2]
+  bbox: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
   position: Position;      // Position: 'left', 'center', 'right'
   distance: Distance;      // Distance: 'very close', 'close', 'medium', 'far'
 }

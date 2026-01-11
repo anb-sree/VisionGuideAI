@@ -25,7 +25,7 @@ const GuidanceScreen = () => {
   const [hasPermission, setHasPermission] = useState(false);
   const [detectedObjects, setDetectedObjects] = useState<DetectedObject[]>([]);
   const [isModelReady, setIsModelReady] = useState(false);
-  
+
   const device = useCameraDevice('back');
   const cameraRef = useRef<Camera>(null);
   const detectionInterval = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -54,10 +54,10 @@ const GuidanceScreen = () => {
     console.log('🔧 Initializing detection service...');
     const success = await DetectionService.initialize();
     setIsModelReady(success);
-    
+
     if (success) {
       console.log('✅ Detection service initialized');
-      
+
       const voiceSuccess = await VoiceService.initialize();
       if (voiceSuccess) {
         console.log('✅ Voice service initialized');
@@ -84,6 +84,8 @@ const GuidanceScreen = () => {
 
       const result = await DetectionService.detectFromImage(
         `file://${photo.path}`,
+        photo.width,
+        photo.height,
         SCREEN_WIDTH,
         SCREEN_HEIGHT
       );
@@ -99,7 +101,7 @@ const GuidanceScreen = () => {
 
   const startDetectionLoop = () => {
     console.log('🎯 Starting detection loop...');
-    
+
     detectionInterval.current = setInterval(() => {
       captureAndDetect();
     }, 2000);
@@ -121,7 +123,7 @@ const GuidanceScreen = () => {
       if (!hasPermission) {
         console.log('📸 Requesting camera permission...');
         const granted = await PermissionService.requestCameraPermission();
-        
+
         if (!granted) {
           Alert.alert(
             'Permission Required',
@@ -131,7 +133,7 @@ const GuidanceScreen = () => {
           setIsLoading(false);
           return;
         }
-        
+
         setHasPermission(true);
       }
 
@@ -147,13 +149,13 @@ const GuidanceScreen = () => {
 
       console.log('✅ Starting guidance mode...');
       setIsGuidanceActive(true);
-      
+
       VoiceService.speak('GUIDANCE_STARTED');
-      
+
       setTimeout(() => {
         startDetectionLoop();
       }, 1000);
-      
+
       console.log('🎯 Real-time object detection active');
 
     } catch (error) {
@@ -169,10 +171,10 @@ const GuidanceScreen = () => {
     stopDetectionLoop();
     setIsGuidanceActive(false);
     setDetectedObjects([]);
-    
+
     VoiceService.clearTracking();
     VoiceService.speak('GUIDANCE_ENDED');
-    
+
     console.log('⏹️ Object detection stopped');
   };
 
@@ -205,7 +207,7 @@ const GuidanceScreen = () => {
             isActive={isGuidanceActive}
             photo={true}
           />
-          
+
           <DetectionOverlay
             objects={detectedObjects}
             frameWidth={SCREEN_WIDTH}
@@ -219,13 +221,13 @@ const GuidanceScreen = () => {
             Press "Start Guidance" to activate camera-based object detection.
           </Text>
           <Text style={styles.infoSubtext}>
-            {isModelReady 
+            {isModelReady
               ? '✅ YOLO server connected and ready'
               : '⚠️ YOLO server not connected'}
           </Text>
-          
+
           {!isModelReady && (
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.retryButton}
               onPress={initializeDetection}
             >

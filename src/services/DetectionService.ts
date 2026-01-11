@@ -2,7 +2,7 @@
 import { DetectedObject, DetectionResult } from '../types/detection.types';
 import { calculatePosition, estimateDistance } from '../utils/positionCalculator';
 
-const SERVER_URL = 'http://10.50.63.25:8000'; 
+const SERVER_URL = 'http://192.168.137.1:8000';
 //use this if running on mobile phone -- this is the system ip address
 // const SERVER_URL = 'http://10.0.2.2:8000'; 
 // for android emulator
@@ -18,15 +18,15 @@ class DetectionService {
     try {
       console.log('🤖 Initializing Detection Service...');
       console.log(`🌐 Server URL: ${SERVER_URL}`);
-      
+
       // Test server connection
       const response = await fetch(`${SERVER_URL}/`, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },
       });
-      
+
       const data = await response.json();
-      
+
       if (data.status === 'online') {
         console.log('✅ Connected to YOLO server');
         console.log(`📦 Model: ${data.model}`);
@@ -36,7 +36,7 @@ class DetectionService {
         console.log('⚠️ Server responded but status not online');
         return false;
       }
-      
+
     } catch (error) {
       console.error('❌ Failed to connect to YOLO server:', error);
       console.error('💡 Make sure:');
@@ -60,15 +60,17 @@ class DetectionService {
    */
   async detectFromImage(
     imageUri: string,
-    frameWidth: number,
-    frameHeight: number
+    imageWidth: number,
+    imageHeight: number,
+    screenWidth: number,
+    screenHeight: number
   ): Promise<DetectionResult> {
     if (!this.isReady()) {
       console.log('⚠️ Detection service not ready');
       return {
         objects: [],
         timestamp: Date.now(),
-        frameSize: { width: frameWidth, height: frameHeight },
+        frameSize: { width: screenWidth, height: screenHeight },
       };
     }
 
@@ -76,7 +78,7 @@ class DetectionService {
       return {
         objects: [],
         timestamp: Date.now(),
-        frameSize: { width: frameWidth, height: frameHeight },
+        frameSize: { width: screenWidth, height: screenHeight },
       };
     }
 
@@ -107,19 +109,32 @@ class DetectionService {
         return {
           objects: [],
           timestamp: Date.now(),
-          frameSize: { width: frameWidth, height: frameHeight },
+          frameSize: { width: screenWidth, height: screenHeight },
         };
       }
 
+      // Calculate scale factors
+      const scaleX = screenWidth / imageWidth;
+      const scaleY = screenHeight / imageHeight;
+
       // Convert server detections to our format
       const detectedObjects: DetectedObject[] = data.detections.map((det: any) => {
-        const position = calculatePosition(det.bbox, frameWidth);
-        const distance = estimateDistance(det.bbox, frameWidth, frameHeight);
+        // CRITICAL: Calculate position/distance based on ACTUAL IMAGE size
+        // This fixes the "always on right side" bug
+        const position = calculatePosition(det.bbox, imageWidth);
+        const distance = estimateDistance(det.bbox, imageWidth, imageHeight);
+
+        const [x1, y1, x2, y2] = det.bbox;
 
         return {
           class: det.class,
           confidence: det.confidence,
-          bbox: det.bbox,
+          bbox: {
+            x: x1 * scaleX,
+            y: y1 * scaleY,
+            width: (x2 - x1) * scaleX,
+            height: (y2 - y1) * scaleY,
+          },
           position,
           distance,
         };
@@ -130,7 +145,7 @@ class DetectionService {
       return {
         objects: detectedObjects,
         timestamp: Date.now(),
-        frameSize: { width: frameWidth, height: frameHeight },
+        frameSize: { width: screenWidth, height: screenHeight },
       };
 
     } catch (error) {
@@ -138,7 +153,7 @@ class DetectionService {
       return {
         objects: [],
         timestamp: Date.now(),
-        frameSize: { width: frameWidth, height: frameHeight },
+        frameSize: { width: screenWidth, height: screenHeight },
       };
     } finally {
       this.isDetecting = false;

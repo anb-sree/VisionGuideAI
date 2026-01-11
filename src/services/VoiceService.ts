@@ -18,7 +18,7 @@ class VoiceService {
       console.log('🔊 Initializing Text-to-Speech...');
 
       await Tts.getInitStatus();
-      
+
       // Load saved language preference
       const savedSettings = await AsyncStorage.getItem('appSettings');
       if (savedSettings) {
@@ -27,7 +27,7 @@ class VoiceService {
           this.currentLanguage = parsed.selectedLanguage;
         }
       }
-      
+
       await this.setLanguage(this.currentLanguage);
       await Tts.setDefaultRate(0.55);
       await Tts.setDefaultPitch(1.0);
@@ -79,7 +79,7 @@ class VoiceService {
 
     try {
       const text = this.translate(key);
-      
+
       if (!force && this.isSpeaking) {
         return;
       }
@@ -92,7 +92,7 @@ class VoiceService {
       }
 
       console.log(`🔊 Speaking: "${text}" in ${this.currentLanguage}`);
-      
+
       Tts.stop();
       Tts.speak(text);
 
@@ -140,7 +140,7 @@ class VoiceService {
       console.log(`🔊 Announcing: "${navigationGuidance}" in ${this.currentLanguage}`);
       Tts.stop();
       Tts.speak(navigationGuidance);
-      
+
       this.announcedObjects.set(guidanceKey, Date.now());
 
       setTimeout(() => {
@@ -178,39 +178,39 @@ class VoiceService {
       const obj = veryCloseCenter[0];
       const name = this.getObjectName(obj.class);
       const distanceDesc = this.getDistanceDescription(obj.distance);
-      
+
       if (veryCloseLeft.length > 0 && veryCloseRight.length > 0) {
         return this.translateWithParams('STOP_BLOCKED', { object: name });
       }
-      
+
       if (veryCloseRight.length > 0 && veryCloseLeft.length === 0) {
-        return this.translateWithParams('OBSTACLE_MOVE_LEFT', { 
-          object: name, 
-          distance: distanceDesc 
+        return this.translateWithParams('OBSTACLE_MOVE_LEFT', {
+          object: name,
+          distance: distanceDesc
         });
       }
-      
+
       if (veryCloseLeft.length > 0 && veryCloseRight.length === 0) {
-        return this.translateWithParams('OBSTACLE_MOVE_RIGHT', { 
-          object: name, 
-          distance: distanceDesc 
+        return this.translateWithParams('OBSTACLE_MOVE_RIGHT', {
+          object: name,
+          distance: distanceDesc
         });
       }
-      
+
       if (leftObjects.length < rightObjects.length) {
-        return this.translateWithParams('OBSTACLE_PREFER_LEFT', { 
-          object: name, 
-          distance: distanceDesc 
+        return this.translateWithParams('OBSTACLE_PREFER_LEFT', {
+          object: name,
+          distance: distanceDesc
         });
       } else if (rightObjects.length < leftObjects.length) {
-        return this.translateWithParams('OBSTACLE_PREFER_RIGHT', { 
-          object: name, 
-          distance: distanceDesc 
+        return this.translateWithParams('OBSTACLE_PREFER_RIGHT', {
+          object: name,
+          distance: distanceDesc
         });
       } else {
-        return this.translateWithParams('OBSTACLE_MOVE_LEFT', { 
-          object: name, 
-          distance: distanceDesc 
+        return this.translateWithParams('OBSTACLE_MOVE_LEFT', {
+          object: name,
+          distance: distanceDesc
         });
       }
     }
@@ -219,21 +219,21 @@ class VoiceService {
       const obj = closeCenter[0];
       const name = this.getObjectName(obj.class);
       const distanceDesc = this.getDistanceDescription(obj.distance);
-      
+
       if (leftObjects.length < rightObjects.length) {
-        return this.translateWithParams('OBJECT_AHEAD_MOVE_LEFT', { 
-          object: name, 
-          distance: distanceDesc 
+        return this.translateWithParams('OBJECT_AHEAD_MOVE_LEFT', {
+          object: name,
+          distance: distanceDesc
         });
       } else if (rightObjects.length < leftObjects.length) {
-        return this.translateWithParams('OBJECT_AHEAD_MOVE_RIGHT', { 
-          object: name, 
-          distance: distanceDesc 
+        return this.translateWithParams('OBJECT_AHEAD_MOVE_RIGHT', {
+          object: name,
+          distance: distanceDesc
         });
       } else {
-        return this.translateWithParams('OBJECT_AHEAD_MOVE_LEFT', { 
-          object: name, 
-          distance: distanceDesc 
+        return this.translateWithParams('OBJECT_AHEAD_MOVE_LEFT', {
+          object: name,
+          distance: distanceDesc
         });
       }
     }
@@ -242,9 +242,9 @@ class VoiceService {
       const obj = veryCloseLeft[0];
       const name = this.getObjectName(obj.class);
       const distanceDesc = this.getDistanceDescription(obj.distance);
-      return this.translateWithParams('OBJECT_ON_LEFT', { 
-        object: name, 
-        distance: distanceDesc 
+      return this.translateWithParams('OBJECT_ON_LEFT', {
+        object: name,
+        distance: distanceDesc
       });
     }
 
@@ -252,26 +252,26 @@ class VoiceService {
       const obj = veryCloseRight[0];
       const name = this.getObjectName(obj.class);
       const distanceDesc = this.getDistanceDescription(obj.distance);
-      return this.translateWithParams('OBJECT_ON_RIGHT', { 
-        object: name, 
-        distance: distanceDesc 
+      return this.translateWithParams('OBJECT_ON_RIGHT', {
+        object: name,
+        distance: distanceDesc
       });
     }
 
     const sortedByPriority = [...criticalObjects].sort((a, b) => {
       const getPriority = (obj: DetectedObject) => {
         let score = 0;
-        
+
         if (obj.distance === 'very close') score += 100;
         else if (obj.distance === 'close') score += 50;
         else if (obj.distance === 'medium') score += 25;
         else score += 10;
-        
+
         if (obj.position === 'center') score += 40;
         else if (obj.position === 'left' || obj.position === 'right') score += 20;
-        
+
         score += obj.confidence * 15;
-        
+
         return score;
       };
       return getPriority(b) - getPriority(a);
@@ -281,21 +281,21 @@ class VoiceService {
       const obj = sortedByPriority[0];
       const name = this.getObjectName(obj.class);
       const distanceDesc = this.getDistanceDescription(obj.distance);
-      
+
       if (obj.position === 'center') {
-        return this.translateWithParams('OBJECT_AHEAD', { 
-          object: name, 
-          distance: distanceDesc 
+        return this.translateWithParams('OBJECT_AHEAD', {
+          object: name,
+          distance: distanceDesc
         });
       } else if (obj.position === 'left') {
-        return this.translateWithParams('OBJECT_DETECTED_LEFT', { 
-          object: name, 
-          distance: distanceDesc 
+        return this.translateWithParams('OBJECT_DETECTED_LEFT', {
+          object: name,
+          distance: distanceDesc
         });
       } else if (obj.position === 'right') {
-        return this.translateWithParams('OBJECT_DETECTED_RIGHT', { 
-          object: name, 
-          distance: distanceDesc 
+        return this.translateWithParams('OBJECT_DETECTED_RIGHT', {
+          object: name,
+          distance: distanceDesc
         });
       }
     }
@@ -324,36 +324,42 @@ class VoiceService {
         'GUIDANCE_STARTED': 'Guidance started. I will help you navigate',
         'GUIDANCE_ENDED': 'Guidance ended',
         'LANGUAGE_CHANGED': 'Language changed successfully',
+        'ENTER_DESTINATION': 'Please enter a destination first before viewing maps',
       },
       'hi-IN': {
         'APP_READY': 'विज़नगाइड तैयार है। शुरू करने के लिए स्टार्ट गाइडेंस दबाएं',
         'GUIDANCE_STARTED': 'मार्गदर्शन शुरू हुआ। मैं आपकी सहायता करूंगा',
         'GUIDANCE_ENDED': 'मार्गदर्शन समाप्त हुआ',
         'LANGUAGE_CHANGED': 'भाषा सफलतापूर्वक बदली गई',
+        'ENTER_DESTINATION': 'नक्शे देखने से पहले कृपया एक गंतव्य दर्ज करें',
       },
       'kn-IN': {
         'APP_READY': 'ವಿಷನ್‌ಗೈಡ್ ಸಿದ್ಧವಾಗಿದೆ. ಪ್ರಾರಂಭಿಸಲು ಸ್ಟಾರ್ಟ್ ಗೈಡೆನ್ಸ್ ಒತ್ತಿರಿ',
         'GUIDANCE_STARTED': 'ಮಾರ್ಗದರ್ಶನ ಪ್ರಾರಂಭವಾಯಿತು. ನಾನು ನಿಮಗೆ ಸಹಾಯ ಮಾಡುತ್ತೇನೆ',
         'GUIDANCE_ENDED': 'ಮಾರ್ಗದರ್ಶನ ಮುಗಿದಿದೆ',
         'LANGUAGE_CHANGED': 'ಭಾಷೆಯನ್ನು ಯಶಸ್ವಿಯಾಗಿ ಬದಲಾಯಿಸಲಾಗಿದೆ',
+        'ENTER_DESTINATION': 'ನಕ್ಷೆಗಳನ್ನು ನೋಡುವ ಮೊದಲು ದಯವಿಟ್ಟು ಗಮ್ಯಸ್ಥಾನವನ್ನು ನಮೂದಿಸಿ',
       },
       'te-IN': {
         'APP_READY': 'విజన్‌గైడ్ సిద్ధంగా ఉంది. ప్రారంభించడానికి స్టార్ట్ గైడెన్స్ నొక్కండి',
         'GUIDANCE_STARTED': 'మార్గదర్శకత్వం ప్రారంభమైంది. నేను మీకు సహాయం చేస్తాను',
         'GUIDANCE_ENDED': 'మార్గదర్శకత్వం ముగిసింది',
         'LANGUAGE_CHANGED': 'భాష విజయవంతంగా మార్చబడింది',
+        'ENTER_DESTINATION': 'మ్యాప్‌లను చూడటానికి ముందు దయచేసి గమ్యాన్ని నమోదు చేయండి',
       },
       'ta-IN': {
         'APP_READY': 'விஷன்கைட் தயாராக உள்ளது. தொடங்க ஸ்டார்ட் கைடன்ஸ் அழுத்தவும்',
         'GUIDANCE_STARTED': 'வழிகாட்டுதல் தொடங்கியது. நான் உங்களுக்கு உதவுவேன்',
         'GUIDANCE_ENDED': 'வழிகாட்டுதல் முடிந்தது',
         'LANGUAGE_CHANGED': 'மொழி வெற்றிகரமாக மாற்றப்பட்டது',
+        'ENTER_DESTINATION': 'வரைபடங்களைப் பார்ப்பதற்கு முன் முதலில் ஒரு இலக்கை உள்ளிடவும்',
       },
       'es-ES': {
         'APP_READY': 'VisionGuide listo. Presione iniciar guía para comenzar',
         'GUIDANCE_STARTED': 'Guía iniciada. Te ayudaré a navegar',
         'GUIDANCE_ENDED': 'Guía finalizada',
         'LANGUAGE_CHANGED': 'Idioma cambiado exitosamente',
+        'ENTER_DESTINATION': 'Por favor, ingrese un destino antes de ver los mapas',
       },
     };
 
@@ -522,11 +528,11 @@ class VoiceService {
   dispose(): void {
     this.stop();
     this.clearTracking();
-    
+
     Tts.removeAllListeners('tts-start');
     Tts.removeAllListeners('tts-finish');
     Tts.removeAllListeners('tts-cancel');
-    
+
     this.isInitialized = false;
   }
 }

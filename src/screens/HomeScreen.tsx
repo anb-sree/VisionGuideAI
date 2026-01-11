@@ -1,8 +1,9 @@
 // src/screens/HomeScreen.tsx
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, Pressable, StyleSheet } from 'react-native';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
+import VoiceService from '../services/VoiceService';
 
 type RootStackParamList = {
   Home: undefined;
@@ -15,6 +16,10 @@ const HomeScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp<RootStackParamList, 'Home'>>();
   const [destination, setDestination] = useState('');
 
+  useEffect(() => {
+    VoiceService.initialize();
+  }, []);
+
   // Start real-time camera guidance
   const startGuidance = () => {
     console.log('🎯 Navigating to Real-Time Guidance');
@@ -25,6 +30,7 @@ const HomeScreen: React.FC = () => {
   const openMaps = () => {
     if (!destination) {
       console.log('⚠️ Please enter a destination first');
+      VoiceService.speak('ENTER_DESTINATION');
       return;
     }
     console.log('🗺️ Navigating to Maps with destination:', destination);
