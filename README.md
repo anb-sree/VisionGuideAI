@@ -1,4 +1,7 @@
 # VisionGuideAI
+AI Companion for the Visually Impaired
+
+# VisionGuideAI
 
 **AI Companion for the Visually Impaired**
 
